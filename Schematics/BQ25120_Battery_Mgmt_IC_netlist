@@ -1,0 +1,72 @@
+Netlist
+
+Exported from BQ25120_Battery_Mgmt_IC.sch at 11/12/2018 11:11 PM
+
+EAGLE Version 9.2.2 Copyright (c) 1988-2018 Autodesk, Inc.
+
+Net      Part     Pad      Pin        Sheet
+
++        BAT1     +@1      +          1
+
+GND      BAT1     +        +          1
+         GND      1        P          1
+         GND5     1        P          1
+         GND6     1        P          1
+         GND7     1        P          1
+         IC1      A1       GND_1      1
+         IC1      A5       PGND       1
+         IC1      D5       GND_2      1
+         S1       3        S          1
+
+N$1      IC1      C1       ISET       1
+
+N$2      IC1      C2       ILIM       1
+
+N$3      IC1      A4       VINLS_1    1
+         L1       2        2          1
+
+N$4      IC1      E1       /MR        1
+         S1       2        P          1
+
+N$5      BAT1     -        -          1
+         IC1      B1       BAT_1      1
+         IC1      B2       BAT_2      1
+
+N$6      IC1      B4       VINLS_2    1
+         IC1      B5       SYS        1
+         IC1      C4       VINLS_3    1
+         L1       1        1          1
+
+N$7      IC1      A2       IN         1
+         V_IN     1        P          1
+
+N$8      CD       1        P          1
+         IC1      E2       /CD        1
+
+N$9      IC1      E4       SDA        1
+         SDA      1        P          1
+
+N$10     IC1      E5       SCL        1
+         SCL      1        P          1
+
+N$11     IC1      D2       INT        1
+         INT      1        P          1
+
+N$12     IC1      D3       RESET      1
+         RST      1        P          1
+
+N$13     IC1      E3       LSCTRL     1
+         LSCTRL   1        P          1
+
+N$14     IC1      C5       LS/LDO     1
+         LDO      1        P          1
+
+N$15     IC1      C3       TS         1
+         NTC      1        P          1
+
+N$17     IC1      D1       IPRETERM   1
+
+N$18     IC1      A3       PMID_1     1
+         IC1      B3       PMID_2     1
+         PMID_1   1        P          1
+
