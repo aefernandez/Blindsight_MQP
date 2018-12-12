@@ -3,11 +3,6 @@ Test code for the ultrasonic version of Blindsight.
 This code controls the Blindsight Assistive Device. It pulses a number of ultrasonic sensors and relays the distance information to vibrating
 motors. The vibrating motors are controlled independently and received the intensity information through a communication module. 
 
-
-Authors: Alan Fernandez
-Date: 10/29/2018
-Worcester Polytechnic Institute (WPI)
-Blindsight MQP '19
 */
 
 /*
@@ -24,8 +19,8 @@ Blindsight MQP '19
 /* 
  *  CONSTANTS
  */
-const int motor_list[] = MOTOR_RIGHT;
-const int sensorList[] = 3;   // LISTS WITH THE SENSOR PINS AND SENSOR OUTPUT
+const int motor_list[] = {MOTOR_RIGHT, MOTOR_CENTER, MOTOR_LEFT};
+const int sensorList[] = {3, 5, 6};   // LISTS WITH THE SENSOR PINS AND SENSOR OUTPUT
 const int sensitivity_increase = 12;  // 
 const int sensitivity_decrease = 12;
 
@@ -91,7 +86,7 @@ void set_motor_intensity(long sensor_pulses[]){
     int motor_intensity = (sensor_pulses[i]-MIN_DIST_MEASUREMENT)/(MAX_DIST_MEASUREMENT-MIN_DIST_MEASUREMENT)*255; // Scale the distance to 0-255
     analogWrite(motor_list[i], motor_intensity);
   }
-}
+} 
  
 /* Start Ranging Function
  * This function initiates the ranging sequence by pulsing the leading sensor with a 25uS pulse. This triggers the leading sensor, which then 
@@ -112,7 +107,7 @@ void printall(){
       Serial.print("Sensor ");
       Serial.print(i);
       Serial.print(" ");
-      Serial.print(pulseList[i]);
+      Serial.print(((pulseList[i]+38.447)/5.4307) / 1000);
       Serial.print(" ");
   }
   Serial.println("");
@@ -163,7 +158,7 @@ bool checkTemperature(float calibration_temperature){
   }
   
   return t_check;
-}
+} 
 
 /* Sensor Recalibration Function
  * This function cycles the sensor to recalibrate them. 
