@@ -13,7 +13,7 @@ Blindsight MQP '19
 /*
  * DEFINITIONS
  */
-#define TEMP_CHECK_INTERVAL 5       // How often to check ambient temperature. t in minutes.
+#define TEMP_CHECK_INTERVAL 1      // How often to check ambient temperature. t in minutes.
 #define MOTOR_LEFT          11       // Motor 1 output
 #define MOTOR_CENTER        10       // Motor 2 output
 #define MOTOR_RIGHT         9       // Motor 3 output
@@ -23,6 +23,7 @@ Blindsight MQP '19
 #define SENSOR_PIN_ONE      3      // Pin connected to sensor one
 #define SENSOR_PIN_TWO      5      // Pin connected to sensor two
 #define SENSOR_PIN_THREE    6      // Pin connected to sensor three
+#define TEMP_SENSOR_PIN     0       // Pin connected to the temperature sensor
 
 #define sensitivity_increase 12    // How much sensitivity changes with button press
 #define sensitivity_decrease 12
@@ -52,7 +53,7 @@ Blindsight MQP '19
 extern float intensity_multiplier;    // controls the intensity of vibrations
 extern int blindsightActivated;     // controls whether sensing is taking place
 
-extern long calibration_temp;       // last calibration temperature
+extern float calibration_temperature;       // last calibration temperature
 extern float pulseList[];            // contains the collected pulses
 extern int motor_list[NUMBER_OF_MOTORS];  // Contains motor pins
 extern int sensorList[NUMBER_OF_SENSORS]; // Contains sensor pins
@@ -100,7 +101,7 @@ public:
      * Return:
      *  t_check: A flag to trigger the re-calibration.
      */
-    int checkTemperature(float calibration_temperature);
+    bool checkTemperature();
 
     /* BS_getDistance Function
          *

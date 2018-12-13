@@ -38,33 +38,33 @@
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
-          <entry key="cpp" value="1850" />
-          <entry key="h" value="664" />
+          <entry key="cpp" value="2345" />
+          <entry key="h" value="804" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="ObjectiveC" value="2514" />
+          <entry key="ObjectiveC" value="3149" />
         </counts>
       </usages-collector>
     </session>
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/core/src/Blindsight_Ultrasonic.cpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="238">
-              <caret line="14" column="42" lean-forward="true" selection-start-line="14" selection-start-column="42" selection-end-line="14" selection-end-column="42" />
+            <state relative-caret-position="306">
+              <caret line="18" column="21" lean-forward="true" selection-start-line="18" selection-start-column="21" selection-end-line="18" selection-end-column="21" />
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/Blindsight_Ultrasonic.h">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="357">
-              <caret line="45" lean-forward="true" selection-start-line="45" selection-end-line="45" />
+            <state relative-caret-position="119">
+              <caret line="79" column="7" lean-forward="true" selection-start-line="79" selection-start-column="7" selection-end-line="94" selection-end-column="28" />
             </state>
           </provider>
         </entry>
@@ -87,12 +87,12 @@
         <option value="$PROJECT_DIR$/src/core/src/Blindsight_Main.cpp" />
         <option value="$PROJECT_DIR$/src/core/src/ultrasonic_handler.cpp" />
         <option value="$PROJECT_DIR$/src/core/src/Blindsight_Ultrasonic.h" />
-        <option value="$PROJECT_DIR$/src/core/src/Blindsight_Ultrasonic.cpp" />
         <option value="$PROJECT_DIR$/src/Blindsight_Ultrasonic.h" />
+        <option value="$PROJECT_DIR$/src/core/src/Blindsight_Ultrasonic.cpp" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="7">
+  <component name="ProjectFrameBounds" extendedState="6">
     <option name="x" value="-12" />
     <option name="y" value="-12" />
     <option name="width" value="3226" />
@@ -158,12 +158,12 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1544563394132</updated>
-      <workItem from="1544563397666" duration="19720000" />
+      <workItem from="1544563397666" duration="24480000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="19720000" />
+    <option name="totallyTimeSpent" value="24480000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-6" y="-6" width="1613" height="873" extended-state="6" />
@@ -239,17 +239,17 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/core/src/Blindsight_Ultrasonic.cpp">
+    <entry file="file://$PROJECT_DIR$/src/Blindsight_Ultrasonic.h">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="238">
-          <caret line="14" column="42" lean-forward="true" selection-start-line="14" selection-start-column="42" selection-end-line="14" selection-end-column="42" />
+        <state relative-caret-position="119">
+          <caret line="79" column="7" lean-forward="true" selection-start-line="79" selection-start-column="7" selection-end-line="94" selection-end-column="28" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/Blindsight_Ultrasonic.h">
+    <entry file="file://$PROJECT_DIR$/src/core/src/Blindsight_Ultrasonic.cpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="357">
-          <caret line="45" lean-forward="true" selection-start-line="45" selection-end-line="45" />
+        <state relative-caret-position="306">
+          <caret line="18" column="21" lean-forward="true" selection-start-line="18" selection-start-column="21" selection-end-line="18" selection-end-column="21" />
         </state>
       </provider>
     </entry>

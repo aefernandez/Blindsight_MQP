@@ -61,18 +61,18 @@ void Blindsight_Ultrasonic::set_motor_intensity(){
         }
 
 
-        Serial.print(pulseList[i]);
-        Serial.print(" ");
+//        Serial.print(pulseList[i]);
+//        Serial.print(" ");
     }
-    Serial.println("");
-    // Print the intensity
-    int i;
-    for(i = 0; i<3; i++){
-        Serial.print(intensityList[i]);
-        Serial.print(" ");
-    }
-    Serial.println("");
-    Serial.println("********");
+//    Serial.println("");
+//    // Print the intensity
+//    int i;
+//    for(i = 0; i<3; i++){
+//        Serial.print(intensityList[i]);
+//        Serial.print(" ");
+//    }
+//    Serial.println("");
+//    Serial.println("********");
 }
 
 /* Print Function
@@ -121,16 +121,21 @@ void Blindsight_Ultrasonic::buttonPress(int buttonPressed){
  * Return:
  *  t_check: A flag to trigger the re-calibration.
  */
-int Blindsight_Ultrasonic::checkTemperature(float calibration_temperature){
+bool Blindsight_Ultrasonic::checkTemperature(){
     int t_check = false;
 
     // Read the temperature sensor
-    int actual_temp = 0;
+    float actual_temp = (((analogRead(TEMP_SENSOR_PIN) * 5.0)/1024.0)-0.5)*100;
 
     // Compare the last calibration temperature to current temperature
-    if (abs(actual_temp - calibration_temperature) >= 5){
+    // According to MaxBotix a change of +-5C justifies recalibration
+    if (abs(actual_temp - calibration_temperature) >= 5.0){
+        // Update calibration temperature
         calibration_temperature = actual_temp;
+        // Return true to trigger recalibration
         t_check = true;
+        //Serial.print('New Temperature ');
+        //Serial.println(calibration_temperature);
     }
 
     return t_check;
@@ -200,12 +205,14 @@ void Blindsight_Ultrasonic::start_ranging(){
  * function in read_sensors() will wait until a pulse is received before continuing.
  */
 void Blindsight_Ultrasonic::recalibrate_sensors(){
-    digitalWrite(SENSOR_POWER_PIN, 0); // Turn off the sensors
+    //digitalWrite(SENSOR_POWER_PIN, 0); // Turn off the sensors
+
     delay(50); // Small delay to allow sensors to power down
 
-    digitalWrite(SENSOR_POWER_PIN, 1); // Turn on the sensors
-    delay(250*100); // Delay 250ms for the power-up delay
+    //digitalWrite(SENSOR_POWER_PIN, 1); // Turn on the sensors
 
-    start_ranging(); // Trigger the first reading
-    read_sensor();
+    delay(250); // Delay 250ms for the power-up delay
+
+    //start_ranging(); // Trigger the first reading
+    //read_sensor();
 }
