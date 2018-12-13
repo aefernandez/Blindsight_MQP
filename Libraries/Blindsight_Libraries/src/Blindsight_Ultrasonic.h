@@ -14,25 +14,36 @@ Blindsight MQP '19
  * DEFINITIONS
  */
 #define TEMP_CHECK_INTERVAL 5       // How often to check ambient temperature. t in minutes.
-#define MOTOR_CENTER        6       // Motor 2 output
-#define MOTOR_LEFT          9       // Motor 1 output
-#define MOTOR_RIGHT         5       // Motor 3 output
+#define MOTOR_LEFT          11       // Motor 1 output
+#define MOTOR_CENTER        10       // Motor 2 output
+#define MOTOR_RIGHT         9       // Motor 3 output
 #define TRIGGER_PIN         13      // Trigger pin to initiate ultrasonic scan
-#define PAUSE_PIN           10      // Pin connected to soft power button
+#define PAUSE_PIN           7      // Pin connected to soft power button
 #define SENSOR_POWER_PIN    2       // Pin connected to the sensor MOSFET
-#define SENSOR_PIN_ONE      30      // Pin connected to sensor one
-#define SENSOR_PIN_TWO      31      // Pin connected to sensor two
-#define SENSOR_PIN_THREE    32      // Pin connected to sensor three
+#define SENSOR_PIN_ONE      3      // Pin connected to sensor one
+#define SENSOR_PIN_TWO      5      // Pin connected to sensor two
+#define SENSOR_PIN_THREE    6      // Pin connected to sensor three
 
 #define sensitivity_increase 12    // How much sensitivity changes with button press
 #define sensitivity_decrease 12
 
-#define MAX_DIST_MEASUREMENT 18    // This is the minimum distance reported by the sensor
-#define MIN_DIST_MEASUREMENT 300   // This is the maximum obstacle distance
+#define MAX_DIST_MEASUREMENT 6.0   // This is the maximum distance reported by the sensor
+#define MIN_DIST_MEASUREMENT 0.1   // This is the minimum distance reported by the sensor
 
 #define NUMBER_OF_SENSORS   3
 #define NUMBER_OF_MOTORS    3
 
+/* Describes the intensity buckets for the motors */
+#define MAX_INTENSITY       255     // Intensity setting for the vibrating motors
+#define MID_INTENSITY       195     //
+#define LOW_INTENSITY       105
+#define NO_INTENSITY        0
+
+/* Describes the distance steps in equivalent motor intensity */
+#define MIN_DISTANCE       250     // Distance converted to motor intensity
+#define MED_DISTANCE       237     //
+#define MAX_DISTANCE       216
+#define OUT_OF_RANGE       210
 
 /*
  * GLOBAL VARIABLES
@@ -42,9 +53,10 @@ extern float intensity_multiplier;    // controls the intensity of vibrations
 extern int blindsightActivated;     // controls whether sensing is taking place
 
 extern long calibration_temp;       // last calibration temperature
-extern long pulseList[];            // contains the collected pulses
+extern float pulseList[];            // contains the collected pulses
 extern int motor_list[NUMBER_OF_MOTORS];  // Contains motor pins
 extern int sensorList[NUMBER_OF_SENSORS]; // Contains sensor pins
+extern int intensityList[NUMBER_OF_SENSORS];
 
 extern unsigned long button_last_read; // for button debouncing
 extern unsigned long last_temp_check;  // how long ago the last temperature calibration took place
@@ -65,7 +77,7 @@ public:
      * Parameters
      *  sensorX_d: The distance measurement for the particular sensor
      */
-    void set_motor_intensity(long sensor_pulses[]);
+    void set_motor_intensity();
 
     /* Print Function
      * This function prints the distance data for all sensors. This is for debugging purposes.

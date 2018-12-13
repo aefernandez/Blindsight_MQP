@@ -1,7 +1,11 @@
 //
 // Created by Alan Fernandez on 12/11/2018.
-//
-
+/*
+ *
+ *
+ * Sources:
+ * Bound Intensity to 0-255: https://stats.stackexchange.com/questions/281162/scale-a-number-between-a-range
+ */
 #include "Blindsight_Ultrasonic.h"
 #include <Arduino.h>
 
@@ -12,7 +16,7 @@ void Blindsight_Ultrasonic::read_sensor(){
     // Iterate through each sensor in the list
     for(int i = 0; i < sizeof(sensorList)/sizeof(sensorList[0]); i++){
         // Moving average with a window of two. Notice the use of the custom BS_getDistance() function.
-        pulseList[i] = (pulseList[i] + getDistance(i))/2;
+        pulseList[i] = (pulseList[i] + (((pulseIn(sensorList[i], HIGH)+38.447)/5.4307) / 1000.0))/2;
 
         // The PulseIn function returns 0 if no pulse is received.
         if (pulseList[i] == 0){
@@ -30,11 +34,45 @@ void Blindsight_Ultrasonic::read_sensor(){
  * Parameters
  *  sensorX_d: The distance measurement for the particular sensor
  */
-void Blindsight_Ultrasonic::set_motor_intensity(long sensor_pulses[]){
-    for (int i = 0; i < sizeof(sensor_pulses)/sizeof(sensor_pulses[0]); i++){
-        int motor_intensity = (sensor_pulses[i]-MIN_DIST_MEASUREMENT)/(MAX_DIST_MEASUREMENT-MIN_DIST_MEASUREMENT)*255; // Scale the distance to 0-255
-        analogWrite(motor_list[i], motor_intensity);
+void Blindsight_Ultrasonic::set_motor_intensity(){
+    int m_int[3] = {10,4,2};
+    float motor_intensity;
+    for(int i = 0; i < sizeof(sensorList)/sizeof(sensorList[0]); i++){
+        motor_intensity = 255.0 - ((float)pulseList[i]-MIN_DIST_MEASUREMENT)/(MAX_DIST_MEASUREMENT-MIN_DIST_MEASUREMENT)*255.0; // Scale the distance to 0-255
+
+        m_int[i] = motor_intensity;
+
+        // Set the intensity of the motor, check first for high intensity given high priority
+        if(motor_intensity > MIN_DISTANCE){
+            analogWrite(motor_list[i], MAX_INTENSITY);
+            intensityList[i] = MAX_INTENSITY;
+
+        }else if(motor_intensity > MED_DISTANCE){
+            analogWrite(motor_list[i], MID_INTENSITY);
+            intensityList[i] = MID_INTENSITY;
+
+        }else if(motor_intensity > MAX_DISTANCE){
+            analogWrite(motor_list[i], LOW_INTENSITY);
+            intensityList[i] = LOW_INTENSITY;
+
+        }else{
+            analogWrite(motor_list[i], NO_INTENSITY);
+            intensityList[i] = NO_INTENSITY;
+        }
+
+
+        Serial.print(pulseList[i]);
+        Serial.print(" ");
     }
+    Serial.println("");
+    // Print the intensity
+    int i;
+    for(i = 0; i<3; i++){
+        Serial.print(intensityList[i]);
+        Serial.print(" ");
+    }
+    Serial.println("");
+    Serial.println("********");
 }
 
 /* Print Function
