@@ -27,26 +27,34 @@ Sources used to write this code are listed below:
 * Adafruit TMP36 Notes:               https://learn.adafruit.com/tmp36-temperature-sensor/using-a-temp-sensor
 */
 
-/* CODE EXCLUSION
- *  Parts labeled false will be excluded from the compiled code.
- */
+/**************************/
+/* *** CODE EXCLUSION *** */
+/**************************/  
+
+/* Parts labeled false will be excluded from the compiled code. */
 #define WIRELESS      false
 #define RECALIBRATION true
 
-/* Custom Library Imports
- * Import the necessary libraries to handle the Ultrasonic or Time of Flight (TOF) sensors and other support functions.
- */
+
+/**********************************/
+/* *** Custom Library Imports *** */
+/**********************************/
+
+/* Import the necessary libraries to handle the Ultrasonic or Time of Flight (TOF) sensors and other support functions. */
 #include <Blindsight_Ultrasonic.h>
+
 
 /* Since the functions are contained within a class of the same name as the library, it is necessary to create an instance of that class to access them. 
 * The only change that is necessary to switch between Ultrasonic and TOF is the class name. Choose between:
 * Blindsight_Ultrasonic and Blindsight_TOF
  */
 Blindsight_Ultrasonic BS;
+//Blindsight_TOF        BS;
 
-/* 
- *  Globals!
- */
+
+/********************/
+/* *** Globals! *** */
+/********************/
 float intensity_multiplier = 0.5;
 int blindsightActivated = 1;
 long calibration_temp = 0;
@@ -59,10 +67,12 @@ char intensity_buckets[] = {0, 105, 195, 255};
 int intensityList[] = {0,0,0};
 float calibration_temperature = 0;
 
-/* Communications Setup
- * Create an instance of the RF24 library to manage the NRF24L01 module
- */
+
+/********************************/ 
+/* *** Communications Setup *** */
+/********************************/
 #if WIRELESS
+/* Create an instance of the RF24 library to manage the NRF24L01 module */
 RF24 radio(9,10);
 const int role_pin = 7;
 
@@ -70,10 +80,7 @@ const int role_pin = 7;
 const uint64_t talking_pipes[5] = { 0xF0F0F0F0D2LL, 0xF0F0F0F0C3LL, 0xF0F0F0F0B4LL, 0xF0F0F0F0A5LL, 0xF0F0F0F096LL };
 const uint64_t listening_pipes[5] = { 0x3A3A3A3AD2LL, 0x3A3A3A3AC3LL, 0x3A3A3A3AB4LL, 0x3A3A3A3AA5LL, 0x3A3A3A3A96LL };
 
-//
 // Address management
-//
-
 // Where in EEPROM is the address stored?
 const uint8_t address_at_eeprom_location = 0;
 
@@ -97,6 +104,9 @@ void setup () {
 
   // Configure all buttons
   pinMode(TRIGGER_PIN,OUTPUT);
+  
+  pinMode(SENSOR_POWER_PIN,OUTPUT);
+  digitalWrite(SENSOR_POWER_PIN, LOW);
 
 
   /***************************/
@@ -153,14 +163,16 @@ void loop () {
     BS.start_ranging();
     BS.read_sensor();
     
-    //#if (WIRELESS != true)
+    #if !WIRELESS
     BS.set_motor_intensity();
-    //#endif
+    #endif
     
     //BS.printall();
   }
-  
-  // Handle button presses, debounce included
+
+  /*******************************/
+  /* *** User Input Handling *** */
+  /*******************************/
   if (button_last_read < millis()-50 && analogRead(sensitivity_increase) != 0){
     button_last_read = millis(); // debounce the button
     BS.buttonPress(0);
@@ -170,6 +182,9 @@ void loop () {
     BS.buttonPress(1);
   }
 
+  /**********************************/
+  /* *** Recalibration Handling *** */
+  /**********************************/
   #if RECALIBRATION
   // Verify if enough time has elapsed to check ambient temperature
   if (millis() - last_temp_check > TEMP_CHECK_INTERVAL * 6000){
@@ -177,15 +192,18 @@ void loop () {
     Serial.println(calibration_temperature);
     if (BS.checkTemperature()){
       BS.recalibrate_sensors();
+      delay(100);
+      Serial.println('Recalibrated Sensors');
     }
     last_temp_check = millis();
   }
   #endif 
   
-  #if WIRELESS
+
   /***********************************/
   /* *** Communications Handling *** */
   /***********************************/
+  #if WIRELESS
   // First, stop listening so we can talk.
   radio.stopListening();
 
