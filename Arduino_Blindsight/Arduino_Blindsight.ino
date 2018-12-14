@@ -14,7 +14,7 @@ Notes:
 * * Wireless Comms?
 * * Reduction of Global Variables (for good practice)
 
-Authors: Alan Fernandez
+Authors: Alan Fernandez, Aatreya Chakravarti
 Date: 12/13/2018
 Worcester Polytechnic Institute (WPI)
 Blindsight MQP '19
@@ -167,7 +167,7 @@ void loop () {
     BS.set_motor_intensity();
     #endif
     
-    //BS.printall();
+    BS.printall();
   }
 
   /*******************************/
@@ -187,9 +187,9 @@ void loop () {
   /**********************************/
   #if RECALIBRATION
   // Verify if enough time has elapsed to check ambient temperature
-  if (millis() - last_temp_check > TEMP_CHECK_INTERVAL * 6000){
-    Serial.println("Temp check!");
-    Serial.println(calibration_temperature);
+  if (millis() - last_temp_check > TEMP_CHECK_INTERVAL){
+    //Serial.println("Temp check!");
+    //Serial.println(calibration_temperature);
     if (BS.checkTemperature()){
       BS.recalibrate_sensors();
       delay(100);
