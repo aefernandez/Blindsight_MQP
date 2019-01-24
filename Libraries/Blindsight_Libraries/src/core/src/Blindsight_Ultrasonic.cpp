@@ -37,28 +37,46 @@ void Blindsight_Ultrasonic::read_sensor(){
 void Blindsight_Ultrasonic::set_motor_intensity(){
     int m_int[3] = {10,4,2};
     float motor_intensity;
+    Serial.println("Error with sensorList size");
     for(int i = 0; i < sizeof(sensorList)/sizeof(sensorList[0]); i++){
         motor_intensity = 255.0 - ((float)pulseList[i]-MIN_DIST_MEASUREMENT)/(MAX_DIST_MEASUREMENT-MIN_DIST_MEASUREMENT)*255.0; // Scale the distance to 0-255
 
         m_int[i] = motor_intensity;
+        Serial.print("Motor Intensity: ");
+        Serial.print(motor_intensity);
+        Serial.print(" Intensity List: ");
+        Serial.print(i);
+        Serial.print(" ");
+        Serial.print(intensityList[i]);
 
-        // Set the intensity of the motor, check first for high intensity given high priority
-        if(motor_intensity > MIN_DISTANCE){
-            analogWrite(motor_list[i], MAX_INTENSITY);
+        // if intensity is changed then true
+        char update_flag = 1;
+
+        // Set the intensity of the motor
+        if(motor_intensity == intensityList[i]){
+            update_flag = 0;
+        }
+        Serial.print(" updateFlag: ");
+        Serial.println(update_flag);
+        else if(motor_intensity > MIN_DISTANCE){
+            //analogWrite(motor_list[i], MAX_INTENSITY);
             intensityList[i] = MAX_INTENSITY;
 
         }else if(motor_intensity > MED_DISTANCE){
-            analogWrite(motor_list[i], MID_INTENSITY);
+            //analogWrite(motor_list[i], MID_INTENSITY);
             intensityList[i] = MID_INTENSITY;
 
         }else if(motor_intensity > MAX_DISTANCE){
-            analogWrite(motor_list[i], LOW_INTENSITY);
+            //analogWrite(motor_list[i], LOW_INTENSITY);
             intensityList[i] = LOW_INTENSITY;
 
         }else{
-            analogWrite(motor_list[i], NO_INTENSITY);
+            //analogWrite(motor_list[i], NO_INTENSITY);
             intensityList[i] = NO_INTENSITY;
         }
+
+        // record if a change occurred - this will signal whether the corresponding slave must update its intensity
+        intensity_bool_list[i] = update_flag;
 
 
 //        Serial.print(pulseList[i]);

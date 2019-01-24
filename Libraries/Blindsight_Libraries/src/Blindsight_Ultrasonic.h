@@ -17,12 +17,12 @@ Blindsight MQP '19
 #define MOTOR_LEFT          11       // Motor 1 output
 #define MOTOR_CENTER        10       // Motor 2 output
 #define MOTOR_RIGHT         9       // Motor 3 output
-#define TRIGGER_PIN         13      // Trigger pin to initiate ultrasonic scan
+#define TRIGGER_PIN         10      // Trigger pin to initiate ultrasonic scan
 #define PAUSE_PIN           7      // Pin connected to soft power button
 #define SENSOR_POWER_PIN    2       // Pin connected to the sensor MOSFET
-#define SENSOR_PIN_ONE      3      // Pin connected to sensor one
-#define SENSOR_PIN_TWO      5      // Pin connected to sensor two
-#define SENSOR_PIN_THREE    6      // Pin connected to sensor three
+#define SENSOR_PIN_ONE      5      // Pin connected to sensor one
+#define SENSOR_PIN_TWO      6      // Pin connected to sensor two
+#define SENSOR_PIN_THREE    3      // Pin connected to sensor three
 #define TEMP_SENSOR_PIN     0       // Pin connected to the temperature sensor
 
 #define sensitivity_increase 12    // How much sensitivity changes with button press
@@ -31,8 +31,8 @@ Blindsight MQP '19
 #define MAX_DIST_MEASUREMENT 6.0   // This is the maximum distance reported by the sensor
 #define MIN_DIST_MEASUREMENT 0.1   // This is the minimum distance reported by the sensor
 
-#define NUMBER_OF_SENSORS   3
-#define NUMBER_OF_MOTORS    3
+#define NUMBER_OF_SENSORS   2
+#define NUMBER_OF_MOTORS    2
 
 /* Describes the intensity buckets for the motors */
 #define MAX_INTENSITY       255     // Intensity setting for the vibrating motors
@@ -58,6 +58,7 @@ extern float pulseList[];            // contains the collected pulses
 extern int motor_list[NUMBER_OF_MOTORS];  // Contains motor pins
 extern int sensorList[NUMBER_OF_SENSORS]; // Contains sensor pins
 extern int intensityList[NUMBER_OF_SENSORS];
+extern int intensity_bool_list[NUMBER_OF_SENSORS];
 
 extern unsigned long button_last_read; // for button debouncing
 extern unsigned long last_temp_check;  // how long ago the last temperature calibration took place
