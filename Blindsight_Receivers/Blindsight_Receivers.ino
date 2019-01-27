@@ -38,7 +38,7 @@ Sources used to write this code are listed below:
 #define CE_PIN            7
 #define CSN_PIN           8
 #define MOTOR_PIN         6   // Motor 2 output
-#define NODE_ID           1   // set to the appropriate number (0, 1, 2)
+#define NODE_ID           0   // set to the appropriate number (0, 1, 2)
 
 RF24 radio(CE_PIN,CSN_PIN);
 

@@ -81,7 +81,6 @@ long timed_function_times[] = {0,0,0,0,0};
  * Blindsight_Ultrasonic and Blindsight_TOF
  */
 Blindsight_Library BS;
-//Blindsight_TOF        BS;
 
 /****************************/
 /*** * Global Variables * ***/
@@ -135,7 +134,7 @@ void setup() {
 
   #if USERINPUT 
   pinMode(PAUSE_PIN, INPUT_PULLUP);
-  attachInterrupt(1, PAUSE_ISR, FALLING); // attach hardware interrupt to pause pin on falling edge
+  attachInterrupt(1, PAUSE_ISR, LOW); // attach hardware interrupt to pause pin on falling edge
   #endif
 
 #if WIRELESS
@@ -160,9 +159,16 @@ void setup() {
  */
 void loop() {
   // Do not allow the system to run until both modules are online
-  BS.check_modules_online();
-  
+  //BS.check_modules_online();
+  unsigned long last_pause = millis();
+  bool pause_interrupt_set = false;
   while(blindsight_running){
+    // Before re-attaching the interrupt to the PAUSE Pin:
+    // - Wait for 5 seconds and make sure the button is not being held down
+    if(millis() - last_pause > 5000 && !pause_interrupt_set && digitalRead(3) == HIGH){
+      attachInterrupt(1, PAUSE_ISR, LOW);
+      pause_interrupt_set = true;
+    }
     unsigned long start_t = millis();
     BS.start_ranging();
     unsigned long end_t = millis();
@@ -256,8 +262,9 @@ void loop() {
   /**************************/
   Serial.println("Entering Low Power Mode");
   #if USERINPUT
-  BS.low_power_mode();
+  low_power_mode();
   blindsight_running != blindsight_running;
+  Serial.println("Exit Low Power Mode");
   #endif
 }
 

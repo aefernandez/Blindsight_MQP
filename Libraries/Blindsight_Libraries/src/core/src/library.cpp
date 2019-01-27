@@ -39,13 +39,13 @@ void Blindsight_Library::read_sensor(){
  */
 void Blindsight_Library::print_sensor_data(){
   for(int i = 0; i < NUMBER_OF_SENSORS; i++){
-    Serial.print("Sensor ");
-    Serial.print(i);
-    Serial.print(" ");
-    Serial.print(pulseList[i]);
-    Serial.print(" ");
+//    Serial.print("[DBG] Sensor ");
+//    Serial.print(i);
+//    Serial.print(" ");
+//    Serial.print(pulseList[i]);
+//    Serial.print(" ");
   }
-  Serial.println("");
+  //Serial.println("");
 }
 
 /* Start Ranging Function
@@ -118,45 +118,58 @@ void Blindsight_Library::recalibrate_sensors(){
  *  sensorX_d: The distance measurement for the particular sensor
  */
 void Blindsight_Library::calculate_motor_intensity(){
+
   //Serial.println("Calculate Motor Intensity Function");
-  int m_int[3] = {10,4,2};
-  float motor_intensity;
-  // map delta intensity into the range of 0-255. The values range from 0 to 1022.
-  delta_sensitivity = 238.0 - ((float)delta_sensitivity-0)/(1022-0)*238.0;
-  float range_sensitivity = 238-delta_sensitivity; // this leaves half a meter untouched. If the delta is maxed then the remaining 0.5m is divided into 3 buckets.
+
+  float range_sensitivity = 6.0 - ((float)delta_sensitivity-0)/(1022-0)*6.0; // this leaves half a meter untouched. If the delta is maxed then the remaining 0.5m is divided into 3 buckets.
+  float MIN_DISTANCE = range_sensitivity / 3;
+  float MED_DISTANCE = range_sensitivity / 3 *2;
+  float MAX_DISTANCE = range_sensitivity;
 
   for(int i = 0; i < sizeof(sensorList)/sizeof(sensorList[0]); i++){
-    motor_intensity = 255.0 - ((float)pulseList[i]-MIN_DIST_MEASUREMENT)/(MAX_DIST_MEASUREMENT-MIN_DIST_MEASUREMENT)*255.0; // Scale the distance to 0-255
-
-    m_int[i] = motor_intensity;
-
     // if intensity is changed then true
     char update_flag = 1;
 
     // Set the intensity of the motor
     // If the intensity is unchanged then do not do anything and set flag to 0 to stop unnecessarily updating nodes
-    if(motor_intensity == intensityList[i]){
-      update_flag = 0;
-    }
-    else if(motor_intensity > range_sensitivity){
-      intensityList[i] = MAX_INTENSITY ;
+    // Set the intensity of the motor, check first for high intensity given high priority
+    if(pulseList[i] < MIN_DISTANCE){
+      //Serial.println("High");
+      intensityList[i] = MAX_INTENSITY;
 
-    }else if(motor_intensity > range_sensitivity*2/3){
-      intensityList[i] = MID_INTENSITY ;
+    }else if(pulseList[i] < MED_DISTANCE){
+      //Serial.println("Mid");
+      intensityList[i] = MID_INTENSITY;
 
-    }else if(motor_intensity > range_sensitivity/3){
-      intensityList[i] = LOW_INTENSITY ;
+    }else if(pulseList[i] < MAX_DISTANCE){
+      //Serial.println("Low");
+      intensityList[i] = LOW_INTENSITY;
 
     }else{
+      //Serial.println("No");
       intensityList[i] = NO_INTENSITY;
     }
-
-    Serial.print("delta_intensity: ");
+//
+    Serial.print("Sensor Number: ");
+    Serial.println(i);
+    Serial.print("[DBG] delta_sensitivity: ");
+    Serial.println(delta_sensitivity);
+    Serial.print("[DBG] delta_intensity: ");
     Serial.println(delta_intensity);
-    Serial.println("IntensityList: ");
-    Serial.print(i);
-    Serial.print(" Value: ");
+    Serial.print("[DBG] range_sensitivity: ");
+    Serial.println(range_sensitivity);
+    Serial.print("[DBG] Pulse: ");
+    Serial.println(pulseList[i]);
+    Serial.print("Assigned Intensity: ");
     Serial.println(intensityList[i]);
+    Serial.print("High: ");
+    Serial.print(MIN_DISTANCE);
+    Serial.print(" MED: ");
+    Serial.print(MED_DISTANCE);
+    Serial.print(" LOW: ");
+    Serial.print(MAX_DISTANCE);
+    Serial.println("");
+
 
 
     // record if a change occurred - this will signal whether the corresponding slave must update its intensity
@@ -196,58 +209,59 @@ void Blindsight_Library::calculate_motor_intensity(){
  * Communication should only occur when there has been a change in vibration intensity.
  */
 void Blindsight_Library::update_nodes(){
-    //Serial.println("Update Nodes Function");
-    // iterate through each node
-    for (byte node = 0; node < NUMBER_OF_SENSORS; node++) {
-      // verify there was change in intensity to justify communication
-      if (true  ){//intensity_bool_list[node]
-        radio.openWritingPipe(nodeAddresses[node]);         // open the corresponding pipe
-        bool tx_sent;                                       // boolean to indicate if radio.write() tx was successful
-        tx_sent = radio.write(&intensityList[node], sizeof(intensityList[node]));
+  //Serial.println("Update Nodes Function");
+  // iterate through each node
+  //Serial.println("[DBG] ---------- Node Update ----------");
+  for (byte node = 0; node < NUMBER_OF_SENSORS; node++) {
+    // verify there was change in intensity to justify communication
+    if (true  ){//intensity_bool_list[node]
+      radio.openWritingPipe(nodeAddresses[node]);         // open the corresponding pipe
+      bool tx_sent;                                       // boolean to indicate if radio.write() tx was successful
+      tx_sent = radio.write(&intensityList[node], sizeof(intensityList[node]));
 
-        // if tx success - receive and read slave node ack reply
-        if (tx_sent) {
-          Serial.println("tx_sent");
-          if (radio.isAckPayloadAvailable()) {
-            //Serial.println("ackpayloadavailable?");
-            // read ack payload and copy data to relevant remoteNodeData array
-            radio.read(&remoteNodeData[node], sizeof(remoteNodeData[node]));
+      // if tx success - receive and read slave node ack reply
+      if (tx_sent) {
+        //Serial.println("[DBG] tx_sent");
+        if (radio.isAckPayloadAvailable()) {
+          //Serial.println("ackpayloadavailable?");
+          // read ack payload and copy data to relevant remoteNodeData array
+          radio.read(&remoteNodeData[node], sizeof(remoteNodeData[node]));
 
-            Serial.print("[+] Successfully received data from node: ");
-            Serial.println(node);
-            Serial.print("  ---- The node reply received was: ");
-            Serial.println(remoteNodeData[node][1]);
-            Serial.print("tx_sent: ");
-            Serial.println(tx_sent);
-            //Serial.print("temp: ");
-            //Serial.println(temp);
-            Serial.print("node: ");
-            Serial.println(node);
-            Serial.print("Intensity sent: ");
-            Serial.println(intensityList[node]);
+//            Serial.print("[Scc] Successfully received data from node: ");
+//            Serial.println(node);
+//            Serial.print("  ---- The node reply received was: ");
+//            Serial.println(remoteNodeData[node][1]);
+//            Serial.print("tx_sent: ");
+//            Serial.println(tx_sent);
+//            Serial.print("temp: ");
+//            Serial.println(temp);
+//            Serial.print("node: ");
+//            Serial.println(node);
+//            Serial.print("Intensity sent: ");
+//            Serial.println(intensityList[node]);
 
-          } else {
-            Serial.println("No ack packet available");
-          }
         } else {
-          Serial.print("[-] The transmission to the selected node failed:");
-          Serial.println(node);
-
-          Serial.print("tx_sent: ");
-          Serial.println(tx_sent);
-          //Serial.print("temp: ");
-          //Serial.println(temp);
-          Serial.print("node: ");
-          Serial.println(node);
-          //Serial.print("nodeAddresses[node]: ");
-          //Serial.println(nodeAddresses[node]);
-
-          // Do something...
+          Serial.println("[DBG] No ack packet available");
         }
-      }else{
-        Serial.println("No sensor update");
+      } else {
+        Serial.print("[Err] The transmission to the selected node failed:");
+        Serial.println(node);
+
+        //Serial.print("tx_sent: ");
+        //Serial.println(tx_sent);
+        //Serial.print("temp: ");
+        //Serial.println(temp);
+        //Serial.print("node: ");
+        //Serial.println(node);
+        //Serial.print("nodeAddresses[node]: ");
+        //Serial.println(nodeAddresses[node]);
+
+        // Do something...
       }
+    }else{
+      Serial.println("No sensor update");
     }
+  }
 }
 /* Print Function
  * This function prints the timing data for all timed functions. This is for debugging purposes.
@@ -267,78 +281,88 @@ void Blindsight_Library::print_timing(){
  *
  */
 void Blindsight_Library::check_modules_online() {
-  Serial.println("Check_Module_online Function");
+  Serial.println("[DBG] Check_Module_online Function");
   bool module_online;
-  Serial.println("Blocked Until Both Modules Reply");
+  Serial.println("[Err] Blocked Until Both Modules Reply");
   for (byte node = 0; node < NUMBER_OF_SENSORS; node++) {
-    Serial.println("For Loop");
+    //Serial.println("[DBG] For Loop");
     module_online = false;
     radio.openWritingPipe(nodeAddresses[node]);         // open the corresponding pipe
     while (!module_online) {
-      Serial.println("While loop");
+      //Serial.println("[DBG] While loop");
       bool tx_sent;                                       // boolean to indicate if radio.write() tx was successful
       tx_sent = radio.write(&intensityList[node], sizeof(intensityList[node]));
 
       if (tx_sent) {
-        Serial.println("tx_sent");
+        //Serial.println("[DBG] tx_sent");
         if (radio.isAckPayloadAvailable()) {
-          //Serial.println("ackpayloadavailable?");
+          //Serial.println("[DBG] ackpayloadavailable?");
           // read ack payload and copy data to relevant remoteNodeData array
           radio.read(&remoteNodeData[node], sizeof(remoteNodeData[node]));
           module_online = true;
-          Serial.println("Module Replied");
+          Serial.println("[Scc] Module Replied");
         }
       }else{
-        Serial.println("tx_not_sent");
+        //Serial.println("tx_not_sent");
       }
     }
   }
-  Serial.println("Both Modules Replied, System Allowed to Run");
+  Serial.println("[Scc] Both Modules Replied, System Allowed to Run");
 }
 
 // Sets up low power mode
-void Blindsight_Library::low_power_mode(){
-  Serial.println("LPM Function");
+void low_power_mode(){
+  //Serial.println("[DBG] LPM Function");
   // command nodes to LPM
-  attachInterrupt(1, PAUSE_ISR, FALLING); // attach hardware interrupt to pause pin on falling edge
   for (byte node = 0; node < NUMBER_OF_SENSORS; node++) {
     // verify there was change in intensity to justify communication
-      radio.openWritingPipe(nodeAddresses[node]);         // open the corresponding pipe
-      bool tx_sent;                                       // boolean to indicate if radio.write() tx was successful
-      bool LPM = true;
-      tx_sent = radio.write(&LPM, sizeof(LPM));
+    radio.openWritingPipe(nodeAddresses[node]);         // open the corresponding pipe
+    bool tx_sent;                                       // boolean to indicate if radio.write() tx was successful
+    int LPM = 9999;
+    tx_sent = radio.write(&LPM, sizeof(LPM));
 
-      // if tx success - receive and read slave node ack reply
-      if (tx_sent) {
-        Serial.println("tx_sent");
-        if (radio.isAckPayloadAvailable()) {
-          //Serial.println("ackpayloadavailable?");
-          // read ack payload and copy data to relevant remoteNodeData array
-          radio.read(&remoteNodeData[node], sizeof(remoteNodeData[node]));
+    // if tx success - receive and read slave node ack reply
+    if (tx_sent) {
+      //Serial.println("[DBG] tx_sent");
+      if (radio.isAckPayloadAvailable()) {
+        //Serial.println("ackpayloadavailable?");
+        // read ack payload and copy data to relevant remoteNodeData array
+        radio.read(&remoteNodeData[node], sizeof(remoteNodeData[node]));
 
-          Serial.print("[+] Successfully received data from node: ");
-          Serial.println(node);
-          Serial.print("  ---- The node reply received was: ");
-          Serial.println(remoteNodeData[node][1]);
+//          Serial.print("[+] Successfully received data from node: ");
+//          Serial.println(node);
+//          Serial.print("  ---- The node reply received was: ");
+//          Serial.println(remoteNodeData[node][1]);
 
-        } else { //(No reply else)
-          Serial.println("No ack packet available");
-        }
-      } else { //(Tx_sent else)
-        Serial.print("[-] The transmission to the selected node failed:");
-        Serial.println(node);
+      } else { //(No reply else)
+        //Serial.println("[DBG] No ack packet available");
       }
+    } else { //(Tx_sent else)
+//        Serial.print("[Err] The transmission to the selected node failed:");
+//        Serial.println(node);
+    }
   }
-
+  //delay(1000);
+  // Wait until PAUSE button is released before entering LPM to avoid problems with interrupts
+  while(digitalRead(PAUSE_PIN) == LOW){
+    ;;
+  }
+  //Serial.println("Powering Radio Down");
   // Local radio to LPM
   radio.powerDown();                                    // power down the radio
-
+  //attachInterrupt(1, PAUSE_ISR, FALLING); // attach hardware interrupt to pause pin on falling edge
   // MCU to LPM
-  attachInterrupt(0, PAUSE_ISR, LOW);                   // configure external interrupt to wake device
+  //Serial.println("Attaching Interrupt");
+  attachInterrupt(1, PAUSE_ISR, LOW);                   // configure external interrupt to wake device
+  //Serial.println("Going to Sleep");
+  //sei();
   LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);  // Enter power down state with ADC and BOD module disabled.
-                                                        // Wake up when wake up pin is low.
-  detachInterrupt(0);                                   // detach interrupt
+  // Wake up when wake up pin is low.
+  Serial.println("Woke up");
+  detachInterrupt(1);                                   // detach interrupt
+  //Serial.println("Detached Interrupt");
   radio.powerUp();                                      // power up the radio
+  //Serial.println("Radio Powered Up");
 }
 
 
@@ -355,8 +379,13 @@ void PAUSE_ISR(){
   detachInterrupt(1);
 
   // Invert the state of the device so that the while loop quits and the device goes to ultra low power mode.
-  blindsight_running != blindsight_running;
-  Serial.println("PAUSE_ISR");
+  if(blindsight_running){
+    blindsight_running = 0;
+  }else{
+    blindsight_running = 1;
+  }
+  //blindsight_running != blindsight_running;
+
 }
 
 
