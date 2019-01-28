@@ -39,18 +39,18 @@ void Blindsight_Library::read_sensor(){
  */
 void Blindsight_Library::print_sensor_data(){
   for(int i = 0; i < NUMBER_OF_SENSORS; i++){
-//    Serial.print("[DBG] Sensor ");
-//    Serial.print(i);
-//    Serial.print(" ");
-//    Serial.print(pulseList[i]);
-//    Serial.print(" ");
+    Serial.print("[DBG] Sensor ");
+    Serial.print(i);
+    Serial.print(" ");
+    Serial.print(pulseList[i]);
+    Serial.print(" ");
   }
-  //Serial.println("");
+  Serial.println("");
 }
 
 /* Start Ranging Function
- * This function initiates the ranging sequence by pulsing the leading sensor with a 25uS pulse. This triggers the leading sensor, which then
- * propagates the signal down the chain of sensors. Each sensor will range for 50ms and trigger the fol0ing sensor.
+ * This function initiates the ranging sequence by pulsing the leading sensor with a 30uS pulse. This triggers the leading sensor, which then
+ * propagates the signal down the chain of sensors. Each sensor will range for 50ms and trigger the following sensor.
  * This function needs to be called every time ranging needs to take place.
  */
 void Blindsight_Library::start_ranging(){
@@ -62,15 +62,12 @@ void Blindsight_Library::start_ranging(){
 
 /* Temperature Check Function
  * This function verifies the current temperature and determines whether a recalibration is necessary.
- * According to MaxBotix, a recalibration of the ultrasonic sensors is warranted when there is a 5C change.
- * Parameters:
- *  previous_temperature: The temperature at which the last calibration was made
- *
+ * According to MaxBotix, a recalibration of the ultrasonic sensors is warranted when there is a 5C change in temperature.
  * Return:
  *  t_check: A flag to trigger the re-calibration.
  */
-bool Blindsight_Library::checkTemperature(){
-  //Serial.println("Check Temperature Function");
+bool Blindsight_Library::check_temperature(){
+  // Serial.println("Check Temperature Function");
   int t_check = false;
 
   // Read the temperature sensor
@@ -83,30 +80,30 @@ bool Blindsight_Library::checkTemperature(){
     calibration_temperature = actual_temp;
     // Return true to trigger recalibration
     t_check = true;
-    //Serial.print('New Temperature ');
-    //Serial.println(calibration_temperature);
+    // Serial.print('New Temperature ');
+    // Serial.println(calibration_temperature);
   }
   return t_check;
 }
 
 /* Sensor Recalibration Function
- * This function cycles the sensor to recalibrate them.
+ * This function cycles the sensors to recalibrate them.
  * The power up sequence takes 450ms according to the datasheet of the MX1020 sensors.
  * There is no delay added to wait for the 150ms calibration and first read sequence because the pulseIn
  * function in read_sensors() will wait until a pulse is received before continuing.
  */
 void Blindsight_Library::recalibrate_sensors(){
-  //Serial.println("Recalibrate Sensors Function");
-  //digitalWrite(SENSOR_POWER_PIN, 0); // Turn off the sensors
+  // Serial.println("Recalibrate Sensors Function");
+  // digitalWrite(SENSOR_POWER_PIN, 0); // Turn off the sensors
 
   delay(50); // Small delay to allow sensors to power down
 
-  //digitalWrite(SENSOR_POWER_PIN, 1); // Turn on the sensors
+  // digitalWrite(SENSOR_POWER_PIN, 1); // Turn on the sensors
 
   delay(250); // Delay 250ms for the power-up delay
 
-  //start_ranging(); // Trigger the first reading
-  //read_sensor();
+  // start_ranging(); // Trigger the first reading
+  // read_sensor();
 }
 
 /* Calculate Motor Intensity Function
@@ -121,10 +118,14 @@ void Blindsight_Library::calculate_motor_intensity(){
 
   //Serial.println("Calculate Motor Intensity Function");
 
-  float range_sensitivity = 6.0 - ((float)delta_sensitivity-0)/(1022-0)*6.0; // this leaves half a meter untouched. If the delta is maxed then the remaining 0.5m is divided into 3 buckets.
+  float range_sensitivity = MAX_DIST_MEASUREMENT - ((float)delta_sensitivity-0)/(1022-0)*MAX_DIST_MEASUREMENT;
   float MIN_DISTANCE = range_sensitivity / 3;
-  float MED_DISTANCE = range_sensitivity / 3 *2;
+  float MED_DISTANCE = range_sensitivity / 3 * 2;
   float MAX_DISTANCE = range_sensitivity;
+
+  //The usable range of PWM for the motor is 105 - 255 -> range must be capped at 150.
+  int range_intensity = 150 - ((float)delta_intensity-0)/(1022-0)*150;
+
 
   for(int i = 0; i < sizeof(sensorList)/sizeof(sensorList[0]); i++){
     // if intensity is changed then true
@@ -135,15 +136,15 @@ void Blindsight_Library::calculate_motor_intensity(){
     // Set the intensity of the motor, check first for high intensity given high priority
     if(pulseList[i] < MIN_DISTANCE){
       //Serial.println("High");
-      intensityList[i] = MAX_INTENSITY;
+      intensityList[i] = PWM_MINIMUM + range_intensity;
 
     }else if(pulseList[i] < MED_DISTANCE){
       //Serial.println("Mid");
-      intensityList[i] = MID_INTENSITY;
+      intensityList[i] = PWM_MINIMUM + range_intensity * 2 / 3;
 
     }else if(pulseList[i] < MAX_DISTANCE){
       //Serial.println("Low");
-      intensityList[i] = LOW_INTENSITY;
+      intensityList[i] = PWM_MINIMUM + range_intensity / 3;
 
     }else{
       //Serial.println("No");
@@ -350,7 +351,7 @@ void low_power_mode(){
   //Serial.println("Powering Radio Down");
   // Local radio to LPM
   radio.powerDown();                                    // power down the radio
-  //attachInterrupt(1, PAUSE_ISR, FALLING); // attach hardware interrupt to pause pin on falling edge
+  //attachInterrupt(1, PAUSE_ISR, FALLING);             // attach hardware interrupt to pause pin on falling edge
   // MCU to LPM
   //Serial.println("Attaching Interrupt");
   attachInterrupt(1, PAUSE_ISR, LOW);                   // configure external interrupt to wake device
@@ -368,7 +369,6 @@ void low_power_mode(){
 
 /* PAUSE_ISR Handles the HWI triggered by the PAUSE_BUTTON
  *  Changes the state of the device between PAUSED/RUNNING
- *
  */
 void PAUSE_ISR(){
   /* Debouncing is needed in order to keep the interrupt from triggering multiple times due to jitter from the button.
@@ -384,7 +384,6 @@ void PAUSE_ISR(){
   }else{
     blindsight_running = 1;
   }
-  //blindsight_running != blindsight_running;
 
 }
 

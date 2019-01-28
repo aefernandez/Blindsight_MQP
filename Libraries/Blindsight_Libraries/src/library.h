@@ -7,6 +7,8 @@
  * Worcester Polytechnic Institute (WPI)
  * WPI Blindsight MQP '19
  * 1/16/19
+ * Sources:
+ * ISR Inside a Class:  https://forum.arduino.cc/index.php?topic=394475.0
  */
 
 #ifndef BLINDSIGHT_LIBRARY_LIBRARY_H
@@ -18,62 +20,56 @@
 /** Sensitivity and Intensity Parameters **/
 /******************************************/
 
-// NOTE THAT THESE ARE GOING TO HAVE TO CHANGE TO BE VARIABLES IF THEY'RE GOING TO BE ADJUSTABLE
-
 #define MAX_DIST_MEASUREMENT 6.0   // This is the maximum distance reported by the sensor
 #define MIN_DIST_MEASUREMENT 0.5   // This is the minimum distance reported by the sensor (actually 0.1)
 
 /* Describes the intensity buckets for the motors */
-#define MAX_INTENSITY       255     // Intensity setting for the vibrating motors
-#define MID_INTENSITY       195     //
-#define LOW_INTENSITY       105
+#define PWM_MINIMUM         105
 #define NO_INTENSITY        0
-
-/* Describes the distance steps in equivalent motor intensity */
-#define MIN_DISTANCE       250     // Distance converted to motor intensity
-#define MED_DISTANCE       237     //
-#define MAX_DISTANCE       216
-#define OUT_OF_RANGE       210
 
 #define NUMBER_OF_SENSORS   2
 
-
+/* Pins */
 extern int TEMP_SENSOR_PIN;
 extern int TRIGGER_PIN;
 extern int PAUSE_PIN;
 
-extern bool blindsight_running;
+/* Device Status */
+extern bool blindsight_running;         // boolean indicating if device is PAUSED
 
-extern RF24 radio;
-extern const byte nodeAddresses[][5];
-extern int remoteNodeData[][2];
+/* Communications */
+extern RF24 radio;                      // RF24 object
+extern const byte nodeAddresses[][5];   // addresses for each node
+extern int remoteNodeData[][2];         // data received from each node
 
-extern int delta_sensitivity;
-extern int delta_intensity;
-extern const char *timed_function_names[];
-extern long timed_function_times[];
+/* User Input */
+extern int delta_sensitivity;           // contains the sensitivity potentiometer value
+extern int delta_intensity;             // contains the intensity potentiometer value
+extern unsigned long button_last_read;  // for button debouncing
+extern unsigned long last_temp_check;   // how long ago the last temperature calibration took place
 
-extern int sensorList[NUMBER_OF_SENSORS]; // Contains sensor pins
-extern int intensityList[NUMBER_OF_SENSORS];
-extern int intensity_bool_list[NUMBER_OF_SENSORS];
 
-extern unsigned long button_last_read; // for button debouncing
-extern unsigned long last_temp_check;  // how long ago the last temperature calibration took place
+/* Debugging */
+extern const char *timed_function_names[];  // contains the name of each function
+extern long timed_function_times[];         // contains the execution time of each function
 
-extern float calibration_temperature;       // last calibration temperature
-extern float pulseList[];            // contains the collected pulses
+/* Ranging */
+extern float pulseList[];                           // contains the collected pulses
+extern int sensorList[NUMBER_OF_SENSORS];           // contains sensor pins
+extern int intensityList[NUMBER_OF_SENSORS];        // contains the PWM value for the corresponding motor
+extern int intensity_bool_list[NUMBER_OF_SENSORS];  // contains a flag indicating if PWM value changed
 
+/* Temperature Calibration */
+extern float calibration_temperature; // last calibration temperature
+
+
+/* Blindsight Class */
 class Blindsight_Library {
  public:
   /* Read Sensor Function
   * This function polls each sensor and retrieves distance data.
   */
   void read_sensor();
-
-  /* Print Function
-   * This function prints the distance data for all sensors. This is for debugging purposes.
-   */
-  void printall();
 
   /* Start Ranging Function
    * This function initiates the ranging sequence by pulsing the leading sensor with a 25uS pulse. This triggers the leading sensor, which then
@@ -91,7 +87,7 @@ class Blindsight_Library {
    * Return:
    *  t_check: A flag to trigger the re-calibration.
    */
-  bool checkTemperature();
+  bool check_temperature();
 
   /* Sensor Recalibration Function
    * This function cycles the sensor to recalibrate them.
@@ -110,11 +106,6 @@ class Blindsight_Library {
    *  sensorX_d: The distance measurement for the particular sensor
    */
   void calculate_motor_intensity();
-
-  /* Print Function
-   * This function prints the timing data for all timed functions. This is for debugging purposes.
-   */
-  void print_timing();
 
   /*  Button Press Handler
    *  This function handles the button presses. There are two soft buttons: +intensity, -intensity. These adjust the intensity of vibration.
@@ -146,16 +137,36 @@ class Blindsight_Library {
 
   /* Blocks until vibrating modules produce an acknowledgement packet. This means that the modules are online and not
    * in sleep mode.
-   *
    */
   void check_modules_online();
 
-  void low_power_mode();
+  /*********************/
+  /* *** Debugging *** */
+  /*********************/
 
+  /* Prints obtained pulse data. */
   void print_sensor_data();
 
+  /* Print Function
+  * This function prints the timing data for all timed functions. This is for debugging purposes.
+  */
+  void print_timing();
 
 };
 
+/* The following functions are placed outside the class in order for the code to operate as intended.
+ * If the ISR was inside the class then the interrupt handler would not know to which instance of the class
+ * to return to upon exiting the ISR. Read more... https://forum.arduino.cc/index.php?topic=394475.0
+ */
+
+/* PAUSE_ISR()
+ * Handles the interrupts triggered by the PAUSE button.
+ */
 void PAUSE_ISR();
+
+/* Low Power Mode Function
+ * Configures low power mode. Commands the slave nodes to sleep and places the master to sleep as well.
+ */
+void low_power_mode();
+
 #endif //BLINDSIGHT_LIBRARY_LIBRARY_H

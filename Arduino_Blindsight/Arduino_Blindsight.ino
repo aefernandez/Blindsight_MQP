@@ -1,7 +1,7 @@
 /*
 Test code for Blindsight: Ultrasonic.
 This code controls the Blindsight Assistive Device. It pulses a number of ultrasonic sensors and relays the distance information to vibrating
-motors. The vibrating motors are controlled independently and received the intensity information through a communication module.
+motors. The vibrating motors are controlled independently and receive the intensity information through a communication module.
 
 Notes:
 * This Version Implements:
@@ -38,12 +38,10 @@ int SENSOR_PIN_ONE  = 5 ;       // Reads pulse from sensor 1
 int SENSOR_PIN_TWO  = 6 ;       // Reads pulse from sensor 2
 int CE_PIN          = 7 ;       // nRF24 Chip Enable Pin
 int CSN_PIN         = 8 ;       // nRF24 Chip Select Pin
-int TRIGGER_PIN     = 10;      // Used to trigger sensor ranging
+int TRIGGER_PIN     = 10;       // Used to trigger sensor ranging
 int TEMP_SENSOR_PIN = 14;       // Connected to the temperature sensor
-int INTENSITY_POT   = 15;      // Adjusts Intensity
-int SENSITIVITY_POT = 16;      // Adjusts Sensitivity
-
-#define NUMBER_OF_SENSORS   2       // Number of sensors connected to device
+int INTENSITY_POT   = 15;       // Adjusts Intensity
+int SENSITIVITY_POT = 16;       // Adjusts Sensitivity
 
 /*********************/
 /*** * DEBUGGING * ***/
@@ -62,19 +60,15 @@ long timed_function_times[] = {0,0,0,0,0};
 /*** * Library Imports * ***/
 /***************************/
 
-#if WIRELESS
-#include <SPI.h>
-#include "RF24.h"
-#include "nRF24L01.h"
-#endif
-
-#if USERINPUT
-#include "LowPower.h"
-#endif
 
 /* Import the necessary libraries to handle the Ultrasonic or Time of Flight (TOF) sensors and other support functions. */
+#include <SPI.h>
 #include <library.h>
 #include <printf.h>
+#include "RF24.h"
+#include "nRF24L01.h"
+#include "LowPower.h"
+
 /* Since the functions are contained within a class of the same name as the library, it is necessary to create
  * an instance of that class to access them.
  * The only change that is necessary to switch between Ultrasonic and TOF is the class name. Choose between:
@@ -101,6 +95,7 @@ int delta_intensity = analogRead(INTENSITY_POT);                // Offset for th
 int delta_sensitivity = analogRead(SENSITIVITY_POT);
 
 bool blindsight_running = true;
+
 /********************************/
 /*** * Communications Setup * ***/
 /********************************/
@@ -130,7 +125,6 @@ void setup() {
   Serial.begin(115200);
   pinMode(SENSOR_PIN_ONE, INPUT); 
   pinMode(SENSOR_PIN_TWO, INPUT);
-  pinMode(5, INPUT);
 
   #if USERINPUT 
   pinMode(PAUSE_PIN, INPUT_PULLUP);
@@ -165,10 +159,11 @@ void loop() {
   while(blindsight_running){
     // Before re-attaching the interrupt to the PAUSE Pin:
     // - Wait for 5 seconds and make sure the button is not being held down
-    if(millis() - last_pause > 5000 && !pause_interrupt_set && digitalRead(3) == HIGH){
+    if(millis() - last_pause > 5000 && !pause_interrupt_set && digitalRead(PAUSE_PIN) == HIGH){
       attachInterrupt(1, PAUSE_ISR, LOW);
       pause_interrupt_set = true;
     }
+    
     unsigned long start_t = millis();
     BS.start_ranging();
     unsigned long end_t = millis();
@@ -194,15 +189,7 @@ void loop() {
   #if WIRELESS
     if(millis() - lastSentTime >= SEND_RATE) {
       start_t = millis();
-      
-//      if(digitalRead(5) == HIGH){
-//        //communicate sleep to node
-//        intensityList[0] = 9999;
-//        intensityList[1] = 9999;
-//        BS.update_nodes();
-//      }else{
-        BS.update_nodes();
-      //}
+      BS.update_nodes();
       end_t = millis();
       timed_function_times[4] = end_t - start_t;
       lastSentTime = millis();
@@ -215,7 +202,6 @@ void loop() {
   
     // Ambient temperature is verified every TEMP_CHECK_INTERVAL minutes to determine if recalibration is necessary.
     // If abs(last_calibration_temperature - current_ambient_temperature) >= 5C then, according to MaxBotix, calibration is necessary.
-  
   #if RECALIBRATION
     if (millis() - last_temp_check > TEMP_CHECK_INTERVAL) {
       //Serial.println("(temp) *** Temperature Check Running ***");
@@ -241,13 +227,6 @@ void loop() {
      * These globals offset the default intensity/sensitivity setting of the device. 
      * Sensitivity  refers to the distance at which the device begins to consider objects a threat (vibration begins).
      * Intensity    refers to the strength with which the motors vibrate.
-     * 
-     * These settings are adjusted the following way:
-     
-       else if(motor_intensity > MIN_DISTANCE){
-        intensityList[i] = MAX_INTENSITY - delta_intensity;
-  
-     * The same applies to the sensitivity. Consult the library to see the code. 
      */
     // Sensitivity Pot
     delta_sensitivity = analogRead(SENSITIVITY_POT);
@@ -260,24 +239,10 @@ void loop() {
   /**************************/
   /*** * LOW POWER MODE * ***/ 
   /**************************/
-  Serial.println("Entering Low Power Mode");
+  //Serial.println("Entering Low Power Mode");
   #if USERINPUT
   low_power_mode();
   blindsight_running != blindsight_running;
-  Serial.println("Exit Low Power Mode");
+  //Serial.println("Exit Low Power Mode");
   #endif
 }
-
-
-
-/* NOTES
- * Currently working on adding low power mode to the device.
- * Added the MCU low power mode but missing the NRF low power mode. Thinking of adding a function that waits for the receiving modules to acknowledge a packet before allowing the device to start. 
- * This function would be called when the device is turned on and after each wake up. At turn on it serves to make sure that the device is not used without the modules working and on wake up from sleep it
- * serves to wait for the modules to wake up from their timed sleep before continuing. 
- * 
- * The modules need their low power to be configured. They are supposed to enter a watchdog timer controlled sleep. They will sleep for 8 seconds then check on a signal. Thus tt is important for the main module
- * to wait until the modules acknowledge the receipt of a packet before functioning. The main module has to be transmitting continuously for at max 9 seconds for this to occur. 
- * 
- * 
- */
