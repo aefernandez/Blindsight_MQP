@@ -16,7 +16,6 @@
 #include <Arduino.h>
 #include "LowPower.h"
 
-
 /* Read Sensor Function
  * This function polls each sensor and retrieves distance data.
  */
@@ -30,7 +29,24 @@ void Blindsight_Library::read_sensor(){
 //        Serial.print(sizeof(sensorList));
 //        Serial.print(" ");
     // Moving average with a window of two.
-    pulseList[i] = (pulseList[i] + (((pulseIn(sensorList[i], HIGH)+38.447)/5.4307) / 1000.0))/2;
+    // second sensor needs to get triggered to range
+    start_ranging(i);
+
+    float temp = pulseIn(sensorList[i], HIGH, 50000); //timeout of 50ms - optimized through testing
+
+    // the pulseIn function may timeout before the sensor begins to range - ignore those data points
+    if (temp != 0)
+    {
+      float newDist = (((temp + 38.447) / 5.4307) / 1000.0);
+      // apply a weighted average of the last two pulses - this gives a disproportionate weight to low values
+      // granting the device a greater sensitivity to smaller values that appear suddenly. This would be the case
+      // when an object suddenly crosses in front of the user.
+      pulseList[i] = (pulseList[i] > newDist) ? (pulseList[i] * 0.9 + newDist * 0.7) / 2 : (pulseList[i] + newDist) / 2;
+    }
+    Serial.print("Sensor: ");
+    Serial.print(i);
+    Serial.print(" ");
+    Serial.println(temp);
   }
 }
 
@@ -38,26 +54,36 @@ void Blindsight_Library::read_sensor(){
  * This function prints the distance data for all sensors. This is for debugging purposes.
  */
 void Blindsight_Library::print_sensor_data(){
-  for(int i = 0; i < NUMBER_OF_SENSORS; i++){
-    Serial.print("[DBG] Sensor ");
-    Serial.print(i);
-    Serial.print(" ");
-    Serial.print(pulseList[i]);
-    Serial.print(" ");
-  }
-  Serial.println("");
+//  for(int i = 0; i < NUMBER_OF_SENSORS; i++){
+//    Serial.print("[DBG] Sensor ");
+//    Serial.print(i);
+//    Serial.print(" ");
+//    Serial.print(pulseList[i]);
+//    Serial.print(" ");
+//  }
+  //Serial.println(pulseList[0]);
+  //Serial.println("");
 }
 
 /* Start Ranging Function
- * This function initiates the ranging sequence by pulsing the leading sensor with a 30uS pulse. This triggers the leading sensor, which then
- * propagates the signal down the chain of sensors. Each sensor will range for 50ms and trigger the following sensor.
  * This function needs to be called every time ranging needs to take place.
+ * Params:
+ *  sensor: the number of the sensor to trigger
  */
-void Blindsight_Library::start_ranging(){
+void Blindsight_Library::start_ranging(int sensor){
   //Serial.println("Start Ranging Function");
-  digitalWrite(TRIGGER_PIN,1);
-  delayMicroseconds(30);
-  digitalWrite(TRIGGER_PIN,0);
+  if(sensor == 0){
+    digitalWrite(TRIGGER_PIN_1,HIGH);
+    delayMicroseconds(30);
+    digitalWrite(TRIGGER_PIN_1,LOW);
+  }else if (sensor == 1){
+    digitalWrite(TRIGGER_PIN_2,HIGH);
+    delayMicroseconds(30);
+    digitalWrite(TRIGGER_PIN_2,LOW);
+  }else{
+    ;;
+  }
+
 }
 
 /* Temperature Check Function
@@ -95,13 +121,9 @@ bool Blindsight_Library::check_temperature(){
 void Blindsight_Library::recalibrate_sensors(){
   // Serial.println("Recalibrate Sensors Function");
   // digitalWrite(SENSOR_POWER_PIN, 0); // Turn off the sensors
-
   delay(50); // Small delay to allow sensors to power down
-
   // digitalWrite(SENSOR_POWER_PIN, 1); // Turn on the sensors
-
   delay(250); // Delay 250ms for the power-up delay
-
   // start_ranging(); // Trigger the first reading
   // read_sensor();
 }
@@ -118,63 +140,83 @@ void Blindsight_Library::calculate_motor_intensity(){
 
   //Serial.println("Calculate Motor Intensity Function");
 
-  float range_sensitivity = MAX_DIST_MEASUREMENT - ((float)delta_sensitivity-0)/(1022-0)*MAX_DIST_MEASUREMENT;
+  float range_sensitivity = 2.0 - ((float)delta_sensitivity-0)/(1023-0)*2.0;
   float MIN_DISTANCE = range_sensitivity / 3;
   float MED_DISTANCE = range_sensitivity / 3 * 2;
   float MAX_DISTANCE = range_sensitivity;
-
-  //The usable range of PWM for the motor is 105 - 255 -> range must be capped at 150.
-  int range_intensity = 150 - ((float)delta_intensity-0)/(1022-0)*150;
-
+  int newIntensity;
+  //The usable range of PWM for the motor is 105 - 255.
+  int range_intensity = 255 - ((float)delta_intensity-0)/(1023-0)*255;
 
   for(int i = 0; i < sizeof(sensorList)/sizeof(sensorList[0]); i++){
     // if intensity is changed then true
-    char update_flag = 1;
+    char update_flag = 0;
 
     // Set the intensity of the motor
     // If the intensity is unchanged then do not do anything and set flag to 0 to stop unnecessarily updating nodes
     // Set the intensity of the motor, check first for high intensity given high priority
     if(pulseList[i] < MIN_DISTANCE){
       //Serial.println("High");
-      intensityList[i] = PWM_MINIMUM + range_intensity;
+      newIntensity = range_intensity*10+4;
+      if(intensityList[i] != newIntensity) {
+        intensityList[i] = newIntensity;
+        update_flag = 1;
+      }
 
     }else if(pulseList[i] < MED_DISTANCE){
       //Serial.println("Mid");
-      intensityList[i] = PWM_MINIMUM + range_intensity * 2 / 3;
+      newIntensity = range_intensity*10+3;
+      if(intensityList[i] != newIntensity) {
+        intensityList[i] = newIntensity;
+        update_flag = 1;
+      }
 
     }else if(pulseList[i] < MAX_DISTANCE){
       //Serial.println("Low");
-      intensityList[i] = PWM_MINIMUM + range_intensity / 3;
+      newIntensity = range_intensity*10+2;
+      if(intensityList[i] != newIntensity) {
+        intensityList[i] = newIntensity;
+        update_flag = 1;
+      }
 
     }else{
       //Serial.println("No");
-      intensityList[i] = NO_INTENSITY;
+      newIntensity = NO_INTENSITY*10+1;
+      if(intensityList[i] != newIntensity) {
+        intensityList[i] = newIntensity;
+        update_flag = 1;
+      }
     }
-//
-    Serial.print("Sensor Number: ");
-    Serial.println(i);
-    Serial.print("[DBG] delta_sensitivity: ");
-    Serial.println(delta_sensitivity);
-    Serial.print("[DBG] delta_intensity: ");
-    Serial.println(delta_intensity);
-    Serial.print("[DBG] range_sensitivity: ");
-    Serial.println(range_sensitivity);
-    Serial.print("[DBG] Pulse: ");
-    Serial.println(pulseList[i]);
-    Serial.print("Assigned Intensity: ");
-    Serial.println(intensityList[i]);
-    Serial.print("High: ");
-    Serial.print(MIN_DISTANCE);
-    Serial.print(" MED: ");
-    Serial.print(MED_DISTANCE);
-    Serial.print(" LOW: ");
-    Serial.print(MAX_DISTANCE);
-    Serial.println("");
+
+    intensity_bool_list[i] = update_flag;
+
+    // add the node ID at the end of the message
+    //intensityList[i]*10+i;
+
+//    Serial.print("Sensor Number: ");
+//    Serial.println(i);
+//    Serial.print("[DBG] delta_sensitivity: ");
+//    Serial.println(delta_sensitivity);
+//    Serial.print("[DBG] delta_intensity: ");
+//    Serial.println(delta_intensity);
+//    Serial.print("[DBG] range_sensitivity: ");
+//    Serial.println(range_sensitivity);
+//    Serial.print("[DBG] Pulse: ");
+//    Serial.println(pulseList[i]);
+//    Serial.print("Assigned Intensity: ");
+//    Serial.println(intensityList[i]);
+//    Serial.print("High: ");
+//    Serial.print(MIN_DISTANCE);
+//    Serial.print(" MED: ");
+//    Serial.print(MED_DISTANCE);
+//    Serial.print(" LOW: ");
+//    Serial.print(MAX_DISTANCE);
+//    Serial.println("");
 
 
 
     // record if a change occurred - this will signal whether the corresponding slave must update its intensity
-    intensity_bool_list[i] = update_flag;
+
 
 //        Serial.print(pulseList[i]);
 //        Serial.print(" ");
@@ -210,24 +252,39 @@ void Blindsight_Library::calculate_motor_intensity(){
  * Communication should only occur when there has been a change in vibration intensity.
  */
 void Blindsight_Library::update_nodes(){
+  unsigned long t;
   //Serial.println("Update Nodes Function");
   // iterate through each node
   //Serial.println("[DBG] ---------- Node Update ----------");
   for (byte node = 0; node < NUMBER_OF_SENSORS; node++) {
     // verify there was change in intensity to justify communication
-    if (true  ){//intensity_bool_list[node]
+    if (intensity_bool_list[node]){ //(true)
+      if(!node){
+        digitalWrite(3, HIGH);
+      }
+      t = millis();
       radio.openWritingPipe(nodeAddresses[node]);         // open the corresponding pipe
+      //Serial.print("OpenWritingPipe: ");
+      //Serial.println(millis() - t);
       bool tx_sent;                                       // boolean to indicate if radio.write() tx was successful
+      t = millis();
       tx_sent = radio.write(&intensityList[node], sizeof(intensityList[node]));
-
+      //Serial.print("RadioWrite: ");
+      //Serial.println(millis() - t);
       // if tx success - receive and read slave node ack reply
       if (tx_sent) {
         //Serial.println("[DBG] tx_sent");
-        if (radio.isAckPayloadAvailable()) {
+        t = millis();
+        bool ackavailable = radio.isAckPayloadAvailable();
+        //Serial.print("isACKavailable: ");
+        //Serial.println(millis() - t);
+        if (ackavailable) {
           //Serial.println("ackpayloadavailable?");
           // read ack payload and copy data to relevant remoteNodeData array
+          t = millis();
           radio.read(&remoteNodeData[node], sizeof(remoteNodeData[node]));
-
+          //Serial.print("RadioRead: ");
+          //Serial.println(millis() - t);
 //            Serial.print("[Scc] Successfully received data from node: ");
 //            Serial.println(node);
 //            Serial.print("  ---- The node reply received was: ");
@@ -240,29 +297,35 @@ void Blindsight_Library::update_nodes(){
 //            Serial.println(node);
 //            Serial.print("Intensity sent: ");
 //            Serial.println(intensityList[node]);
+          //Serial.print("tx_sent: ");
+          //Serial.println(tx_sent);
+          //Serial.print("temp: ");
+          //Serial.println(temp);
+          //Serial.print("node: ");
+          //Serial.println(node);
+          //Serial.print("nodeAddresses[node]: ");
 
         } else {
-          Serial.println("[DBG] No ack packet available");
+          //Serial.println("[DBG] No ack packet available");
         }
-      } else {
-        Serial.print("[Err] The transmission to the selected node failed:");
-        Serial.println(node);
 
-        //Serial.print("tx_sent: ");
-        //Serial.println(tx_sent);
-        //Serial.print("temp: ");
-        //Serial.println(temp);
-        //Serial.print("node: ");
+        Serial.print("Time: ");
+        Serial.println(millis() - t);
+        digitalWrite(3, LOW);
+
+      } else {
+        //Serial.print("[Err] The transmission to the selected node failed:");
         //Serial.println(node);
-        //Serial.print("nodeAddresses[node]: ");
+
         //Serial.println(nodeAddresses[node]);
 
         // Do something...
       }
     }else{
-      Serial.println("No sensor update");
+      //Serial.println("No sensor update");
     }
   }
+
 }
 /* Print Function
  * This function prints the timing data for all timed functions. This is for debugging purposes.
@@ -274,6 +337,7 @@ void Blindsight_Library::print_timing(){
     Serial.print(": ");
     Serial.print(timed_function_times[i]);
   }
+
 }
 
 
@@ -351,7 +415,7 @@ void low_power_mode(){
   //Serial.println("Powering Radio Down");
   // Local radio to LPM
   radio.powerDown();                                    // power down the radio
-  //attachInterrupt(1, PAUSE_ISR, FALLING);             // attach hardware interrupt to pause pin on falling edge
+  //attachInterrupt(1, PAUSE_ISR, FALLING); // attach hardware interrupt to pause pin on falling edge
   // MCU to LPM
   //Serial.println("Attaching Interrupt");
   attachInterrupt(1, PAUSE_ISR, LOW);                   // configure external interrupt to wake device
@@ -369,6 +433,7 @@ void low_power_mode(){
 
 /* PAUSE_ISR Handles the HWI triggered by the PAUSE_BUTTON
  *  Changes the state of the device between PAUSED/RUNNING
+ *
  */
 void PAUSE_ISR(){
   /* Debouncing is needed in order to keep the interrupt from triggering multiple times due to jitter from the button.
@@ -384,7 +449,6 @@ void PAUSE_ISR(){
   }else{
     blindsight_running = 1;
   }
+  //blindsight_running != blindsight_running;
 
 }
-
-

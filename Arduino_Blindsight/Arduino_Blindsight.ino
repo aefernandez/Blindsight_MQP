@@ -33,12 +33,13 @@ Sources used to write this code are listed below:
 /*** * Hardware Connection Definitions * ***/
 /*******************************************/
 
-int PAUSE_PIN       = 3 ;       // START/PAUSE button
-int SENSOR_PIN_ONE  = 5 ;       // Reads pulse from sensor 1
-int SENSOR_PIN_TWO  = 6 ;       // Reads pulse from sensor 2
-int CE_PIN          = 7 ;       // nRF24 Chip Enable Pin
-int CSN_PIN         = 8 ;       // nRF24 Chip Select Pin
-int TRIGGER_PIN     = 10;       // Used to trigger sensor ranging
+int PAUSE_PIN       = 3;       // START/PAUSE button
+int SENSOR_PIN_ONE  = 5;       // Reads pulse from sensor 1
+int SENSOR_PIN_TWO  = 6;       // Reads pulse from sensor 2
+int CE_PIN          = 7;       // nRF24 Chip Enable Pin
+int CSN_PIN         = 8;       // nRF24 Chip Select Pin
+int TRIGGER_PIN_1   = 9;       // Used to trigger sensor ranging
+int TRIGGER_PIN_2  = 10;
 int TEMP_SENSOR_PIN = 14;       // Connected to the temperature sensor
 int INTENSITY_POT   = 15;       // Adjusts Intensity
 int SENSITIVITY_POT = 16;       // Adjusts Sensitivity
@@ -123,21 +124,25 @@ RF24 radio(CE_PIN, CSN_PIN);
 
 void setup() {
   Serial.begin(115200);
-  pinMode(SENSOR_PIN_ONE, INPUT); 
+  pinMode(PAUSE_PIN, INPUT);
+  pinMode(SENSOR_PIN_ONE, INPUT);
   pinMode(SENSOR_PIN_TWO, INPUT);
+  pinMode(3, OUTPUT);
+  pinMode(CE_PIN, OUTPUT);
+  pinMode(CSN_PIN, OUTPUT);
 
   #if USERINPUT 
-  pinMode(PAUSE_PIN, INPUT_PULLUP);
-  attachInterrupt(1, PAUSE_ISR, LOW); // attach hardware interrupt to pause pin on falling edge
+  //pinMode(PAUSE_PIN, INPUT_PULLUP);
+  //attachInterrupt(1, PAUSE_ISR, LOW); // attach hardware interrupt to pause pin on falling edge
   #endif
 
 #if WIRELESS
   
   radio.begin();                    // begin radio object
-  radio.setPALevel(RF24_PA_LOW);    // set power level of the radio
-  radio.setDataRate(RF24_250KBPS);  // set RF datarate - lowest rate for longest range capability
-  radio.setChannel(0x66);           // set radio channel to use - ensure all slaves match this
-  radio.setRetries(4, 5);           // set time between retries and max no. of retries
+  radio.setPALevel(RF24_PA_HIGH);    // set power level of the radio
+  radio.setDataRate(RF24_2MBPS);  // set RF datarate - lowest rate for longest range capability
+  radio.setChannel(0x76);           // set radio channel to use - ensure all slaves match this
+  //radio.setRetries(4, 5);           // set time between retries and max no. of retries
   radio.enableAckPayload();         // enable ack payload - each slave replies with sensor data using this feature
   printf_begin();
   radio.printDetails();             // Dump the configuration of the rf unit for debugging
@@ -163,37 +168,46 @@ void loop() {
       attachInterrupt(1, PAUSE_ISR, LOW);
       pause_interrupt_set = true;
     }
-    
     unsigned long start_t = millis();
-    BS.start_ranging();
+//    BS.start_ranging(0);
     unsigned long end_t = millis();
-    timed_function_times[0] = end_t - start_t;
+//    Serial.print("Start_Ranging: ");
+//    Serial.println(end_t - start_t);
+//    timed_function_times[0] = end_t - start_t;
     
     start_t = millis(); 
     BS.read_sensor();
     end_t = millis();
-    timed_function_times[1] = end_t - start_t;
+//    Serial.print("Read_Sensor: ");
+//    Serial.println(end_t - start_t);
+//    timed_function_times[1] = end_t - start_t;
     
     start_t = millis();
     BS.print_sensor_data();
     end_t = millis();
-    timed_function_times[2] = end_t - start_t;
+//    Serial.print("Print_Sensor_Data: ");
+//    Serial.println(end_t - start_t);
+//    timed_function_times[2] = end_t - start_t;
     
     start_t = millis();
     BS.calculate_motor_intensity();
     end_t = millis();
-    timed_function_times[3] = end_t - start_t;
+//    Serial.print("Calculate_Intensity: ");
+//    Serial.println(end_t - start_t);
+//    timed_function_times[3] = end_t - start_t;
   
-    BS.print_timing();
+    //BS.print_timing();
     
   #if WIRELESS
-    if(millis() - lastSentTime >= SEND_RATE) {
-      start_t = millis();
+//  if(millis() - lastSentTime >= SEND_RATE) {
+//      start_t = millis();
       BS.update_nodes();
-      end_t = millis();
-      timed_function_times[4] = end_t - start_t;
-      lastSentTime = millis();
-    }
+//      end_t = millis();
+//      Serial.print("UpdateNodes: ");
+//      Serial.println(end_t - start_t);
+//      timed_function_times[4] = end_t - start_t;
+//      lastSentTime = millis();
+//  }
   #endif
   
     /**********************************/

@@ -31,7 +31,8 @@
 
 /* Pins */
 extern int TEMP_SENSOR_PIN;
-extern int TRIGGER_PIN;
+extern int TRIGGER_PIN_1;
+extern int TRIGGER_PIN_2;
 extern int PAUSE_PIN;
 
 /* Device Status */
@@ -76,7 +77,7 @@ class Blindsight_Library {
    * propagates the signal down the chain of sensors. Each sensor will range for 50ms and trigger the fol0ing sensor.
    * This function needs to be called every time ranging needs to take place.
    */
-  void start_ranging();
+  void start_ranging(int sensor);
 
   /* Temperature Check Function
    * This function verifies the current temperature and determines whether a recalibration is necessary.
