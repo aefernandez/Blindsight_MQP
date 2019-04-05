@@ -10,12 +10,9 @@ Notes:
 * * Distance-Based Vibration Intensity
 * * Wireless Comms
 * * Device Pausing
-*
-* Not Implemented Yet:
-* * Reduction of Global Variables (for good practice)
 
 Engineers: Alan Fernandez, Aatreya Chakravarti
-Date: 12/13/2018
+Date: 03/26/2019
 Worcester Polytechnic Institute (WPI)
 Blindsight MQP '19
 
@@ -34,15 +31,17 @@ Sources used to write this code are listed below:
 /*******************************************/
 
 int PAUSE_PIN       = 3;       // START/PAUSE button
+int MOSFET_TRIGGER  = 4; 
 int SENSOR_PIN_ONE  = 5;       // Reads pulse from sensor 1
 int SENSOR_PIN_TWO  = 6;       // Reads pulse from sensor 2
 int CE_PIN          = 7;       // nRF24 Chip Enable Pin
 int CSN_PIN         = 8;       // nRF24 Chip Select Pin
 int TRIGGER_PIN_1   = 9;       // Used to trigger sensor ranging
-int TRIGGER_PIN_2  = 10;
+int TRIGGER_PIN_2   = 10;
 int TEMP_SENSOR_PIN = 14;       // Connected to the temperature sensor
 int INTENSITY_POT   = 15;       // Adjusts Intensity
 int SENSITIVITY_POT = 16;       // Adjusts Sensitivity
+
 
 /*********************/
 /*** * DEBUGGING * ***/
@@ -139,10 +138,10 @@ void setup() {
 #if WIRELESS
   
   radio.begin();                    // begin radio object
-  radio.setPALevel(RF24_PA_HIGH);    // set power level of the radio
-  radio.setDataRate(RF24_2MBPS);  // set RF datarate - lowest rate for longest range capability
+  radio.setPALevel(RF24_PA_HIGH);   // set power level of the radio
+  radio.setDataRate(RF24_2MBPS);    // set RF datarate - lowest rate for longest range capability
   radio.setChannel(0x76);           // set radio channel to use - ensure all slaves match this
-  //radio.setRetries(4, 5);           // set time between retries and max no. of retries
+  //radio.setRetries(4, 5);         // set time between retries and max no. of retries
   radio.enableAckPayload();         // enable ack payload - each slave replies with sensor data using this feature
   printf_begin();
   radio.printDetails();             // Dump the configuration of the rf unit for debugging
@@ -246,7 +245,36 @@ void loop() {
     delta_sensitivity = analogRead(SENSITIVITY_POT);
   
     // Intensity Pot
-    delta_intensity = analogRead(INTENSITY_POT);
+    // Detect if user changed potentiometer. If he did then begin intensity adjustment.
+    // This means vibrating the bands continuously so that the intensity may be set more easily
+    // Stop the continuous vibrations after 2 seconds
+    
+    if(abs(delta_intensity - analogRead(INTENSITY_POT)) > 6){
+      // assume user is adjusting intensity
+      unsigned long adjust_begin = millis();
+      
+      while(millis() - adjust_begin < 2000){
+//        Serial.println("Adjusting Intensity");
+//        Serial.println(delta_intensity);
+
+        // read in intensity setting
+        int temp_intensity = analogRead(INTENSITY_POT);
+//        Serial.println(temp_intensity);
+//        Serial.println(abs(delta_intensity - temp_intensity));
+        // compare current intensity setting to past intensity setting
+        adjust_begin = abs(delta_intensity - temp_intensity) > 6 ? millis() : adjust_begin;
+        // update past intensity setting
+        delta_intensity = abs(delta_intensity - temp_intensity) > 6 ? temp_intensity : delta_intensity;
+        
+        // send packet to bands to vibrate at new intensity at min period
+        // activate the override parameter and use the default period
+        int scaled_intensity = 255 - ((float)delta_intensity-0)/(1023-0)*255;
+        BS.update_nodes(true, scaled_intensity);
+      }
+      
+      BS.update_nodes(true, 0); 
+    }
+
   #endif
   }
 
