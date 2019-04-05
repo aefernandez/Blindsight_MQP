@@ -9,7 +9,7 @@
  *
  * Worcester Polytechnic Institute (WPI)
  * WPI Blindsight MQP '19
- * 1/16/19
+ * 3/26/19
  */
 
 #include "library.h"
@@ -17,8 +17,17 @@
 #include "LowPower.h"
 
 /* Read Sensor Function
- * This function polls each sensor and retrieves distance data.
+ * This function polls each sensor and calculates the distance data.
+ * The function uses a running average to reduce the impact of noise. An average, however, reduces sensitivity to
+ * objects that suddenly appear in the FOV. In theory, if the device was ranging at its maximum range and an obstacle
+ * suddenly appears 1m away from the sensors it would take multiple polls before the average is low enough for the
+ * bands to begin to vibrate. This is remedied by scaling all measurements already in the pulse history such that the
+ * average falls faster. The older data points are scaled less than the newer ones as they are considered to be more
+ * reliable than the newer point, which could just be noise. This weighted average is only applied if the current
+ * measurement is lower than the previous measurement.
  */
+float pulse_history[][3] = {{0,0,0},{0,0,0}};
+int pulse_history_size = 3;
 void Blindsight_Library::read_sensor(){
   //Serial.println("read sensor function");
   // Iterate through each sensor in the list
@@ -28,28 +37,51 @@ void Blindsight_Library::read_sensor(){
 //        Serial.print(" sizeof(sList): ");
 //        Serial.print(sizeof(sensorList));
 //        Serial.print(" ");
-    // Moving average with a window of two.
-    // second sensor needs to get triggered to range
+
+
+    // trigger the sensor to start ranging
     start_ranging(i);
 
-    float temp = pulseIn(sensorList[i], HIGH, 50000); //timeout of 50ms - optimized through testing
+    // collect raw distance data
+    float raw_distance = pulseIn(sensorList[i], HIGH, 50000); //timeout of 50ms - optimized through testing
 
     // the pulseIn function may timeout before the sensor begins to range - ignore those data points
-    if (temp != 0)
+    if (raw_distance != 0)
     {
-      float newDist = (((temp + 38.447) / 5.4307) / 1000.0);
-      // apply a weighted average of the last two pulses - this gives a disproportionate weight to low values
-      // granting the device a greater sensitivity to smaller values that appear suddenly. This would be the case
-      // when an object suddenly crosses in front of the user.
-      pulseList[i] = (pulseList[i] > newDist) ? (pulseList[i] * 0.9 + newDist * 0.7) / 2 : (pulseList[i] + newDist) / 2;
+      // calculate the distance in meters
+      float newDist = (((raw_distance + 38.447) / 5.4307) / 1000.0);
+
+      // shift this measurement into the history array
+      for(int a=0;a<pulse_history_size-1;a++){
+        pulse_history[i][a]=pulse_history[i][a+1];
+      }
+      pulse_history[i][pulse_history_size-1] = newDist;
+
+      // calculate the corresponding running average
+      float avg = 0;
+      if(pulseList[i] < newDist){
+        float weight = 0.9;
+        for(int a = 0; a < pulse_history_size; a++){
+          avg += pulse_history[i][a] * weight;
+          weight -= 0.1;
+        }
+        avg /= pulse_history_size;
+
+      }else{
+        for(int a = 0; a<pulse_history_size; a++){
+          avg += pulse_history[i][a];
+        }
+        avg /= pulse_history_size;
+      }
+      // store the average as the current measurement
+      pulseList[i] = avg;
     }
     Serial.print("Sensor: ");
     Serial.print(i);
     Serial.print(" ");
-    Serial.println(temp);
+    Serial.println(raw_distance);
   }
 }
-
 /* Print Function
  * This function prints the distance data for all sensors. This is for debugging purposes.
  */
@@ -148,6 +180,7 @@ void Blindsight_Library::calculate_motor_intensity(){
   //The usable range of PWM for the motor is 105 - 255.
   int range_intensity = 255 - ((float)delta_intensity-0)/(1023-0)*255;
 
+  Serial.println(range_sensitivity);
   for(int i = 0; i < sizeof(sensorList)/sizeof(sensorList[0]); i++){
     // if intensity is changed then true
     char update_flag = 0;
@@ -250,15 +283,20 @@ void Blindsight_Library::calculate_motor_intensity(){
  * for the slave to acknowledge receipt and continues to the next pipe.
  *
  * Communication should only occur when there has been a change in vibration intensity.
+ *
+ * Parameters:
+ *  override_sensors: This parameter allows the function to ignore the sensor readings and send a custom package.
+ *                    This functionality is used for the intensity setting where the bands need to vibrate continuously,
+ *                    to make it easier for the user to select an intensity.
  */
-void Blindsight_Library::update_nodes(){
+void Blindsight_Library::update_nodes(bool override_sensors, int override_intensity, int override_period){
   unsigned long t;
   //Serial.println("Update Nodes Function");
   // iterate through each node
   //Serial.println("[DBG] ---------- Node Update ----------");
   for (byte node = 0; node < NUMBER_OF_SENSORS; node++) {
     // verify there was change in intensity to justify communication
-    if (intensity_bool_list[node]){ //(true)
+    if (intensity_bool_list[node] || override_sensors){ //(true)
       if(!node){
         digitalWrite(3, HIGH);
       }
@@ -268,7 +306,13 @@ void Blindsight_Library::update_nodes(){
       //Serial.println(millis() - t);
       bool tx_sent;                                       // boolean to indicate if radio.write() tx was successful
       t = millis();
-      tx_sent = radio.write(&intensityList[node], sizeof(intensityList[node]));
+      // check if the override is activated, then send the corresponding package
+      if (!override_sensors) {
+        tx_sent = radio.write(&intensityList[node], sizeof(intensityList[node]));
+      }else{
+        int temp_intensity = override_intensity*10+override_period;
+        tx_sent = radio.write(&temp_intensity, sizeof(temp_intensity));
+      }
       //Serial.print("RadioWrite: ");
       //Serial.println(millis() - t);
       // if tx success - receive and read slave node ack reply

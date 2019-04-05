@@ -134,7 +134,7 @@ class Blindsight_Library {
    *
    * Communication should only occur when there has been a change in vibration intensity.
    */
-  void update_nodes();
+  void update_nodes(bool override_sensors = false, int override_intensity = 255, int override_period = 4);
 
   /* Blocks until vibrating modules produce an acknowledgement packet. This means that the modules are online and not
    * in sleep mode.
