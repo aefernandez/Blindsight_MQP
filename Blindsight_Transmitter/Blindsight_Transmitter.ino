@@ -10,6 +10,7 @@ Notes:
 * * Distance-Based Vibration Intensity
 * * Wireless Comms
 * * Device Pausing
+* * Friendly Adjustments to Intensity and Sensitivity
 
 Engineers: Alan Fernandez, Aatreya Chakravarti
 Date: 03/26/2019
@@ -30,17 +31,17 @@ Sources used to write this code are listed below:
 /*** * Hardware Connection Definitions * ***/
 /*******************************************/
 
-int PAUSE_PIN       = 3;       // START/PAUSE button
-int MOSFET_TRIGGER  = 4; 
-int SENSOR_PIN_ONE  = 5;       // Reads pulse from sensor 1
-int SENSOR_PIN_TWO  = 6;       // Reads pulse from sensor 2
-int CE_PIN          = 7;       // nRF24 Chip Enable Pin
-int CSN_PIN         = 8;       // nRF24 Chip Select Pin
-int TRIGGER_PIN_1   = 9;       // Used to trigger sensor ranging
-int TRIGGER_PIN_2   = 10;
-int TEMP_SENSOR_PIN = 14;       // Connected to the temperature sensor
-int INTENSITY_POT   = 15;       // Adjusts Intensity
-int SENSITIVITY_POT = 16;       // Adjusts Sensitivity
+int PAUSE_PIN       = 3;    // START/PAUSE button
+int MOSFET_TRIGGER  = 4;    // MOSFET that powers Ultrasonic Sensors  
+int SENSOR_PIN_ONE  = 5;    // Reads pulse from sensor 1
+int SENSOR_PIN_TWO  = 6;    // Reads pulse from sensor 2
+int CE_PIN          = 7;    // nRF24 Chip Enable Pin
+int CSN_PIN         = 8;    // nRF24 Chip Select Pin
+int TRIGGER_PIN_1   = 9;    // Used to trigger Sensor1 ranging
+int TRIGGER_PIN_2   = 10;   // Triggers Sensor2 ranging
+int TEMP_SENSOR_PIN = 14;   // Connected to the temperature sensor
+int INTENSITY_POT   = 15;   // Adjusts Intensity
+int SENSITIVITY_POT = 16;   // Adjusts Sensitivity
 
 
 /*********************/
@@ -60,7 +61,6 @@ long timed_function_times[] = {0,0,0,0,0};
 /*** * Library Imports * ***/
 /***************************/
 
-
 /* Import the necessary libraries to handle the Ultrasonic or Time of Flight (TOF) sensors and other support functions. */
 #include <SPI.h>
 #include <library.h>
@@ -69,11 +69,6 @@ long timed_function_times[] = {0,0,0,0,0};
 #include "nRF24L01.h"
 #include "LowPower.h"
 
-/* Since the functions are contained within a class of the same name as the library, it is necessary to create
- * an instance of that class to access them.
- * The only change that is necessary to switch between Ultrasonic and TOF is the class name. Choose between:
- * Blindsight_Ultrasonic and Blindsight_TOF
- */
 Blindsight_Library BS;
 
 /****************************/
@@ -126,7 +121,7 @@ void setup() {
   pinMode(PAUSE_PIN, INPUT);
   pinMode(SENSOR_PIN_ONE, INPUT);
   pinMode(SENSOR_PIN_TWO, INPUT);
-  pinMode(3, OUTPUT);
+
   pinMode(CE_PIN, OUTPUT);
   pinMode(CSN_PIN, OUTPUT);
 
@@ -138,10 +133,9 @@ void setup() {
 #if WIRELESS
   
   radio.begin();                    // begin radio object
-  radio.setPALevel(RF24_PA_HIGH);   // set power level of the radio
+  radio.setPALevel(RF24_PA_LOW);   // set power level of the radio
   radio.setDataRate(RF24_2MBPS);    // set RF datarate - lowest rate for longest range capability
   radio.setChannel(0x76);           // set radio channel to use - ensure all slaves match this
-  //radio.setRetries(4, 5);         // set time between retries and max no. of retries
   radio.enableAckPayload();         // enable ack payload - each slave replies with sensor data using this feature
   printf_begin();
   radio.printDetails();             // Dump the configuration of the rf unit for debugging
@@ -149,69 +143,39 @@ void setup() {
 /* Comms Config Done */
 #endif
 }
-   
-/*
- * Includes an array that stores the timing of each function:
- * timed_function_names = ["start_ranging()", "read_sensor()", "print_all()", "calculate_motor_intensity()", "update_nodes()"]
- * timed_function_times = [...corresponding timings...]
- */
+
+/*********************/
+/*** * Main Loop * ***/
+/*********************/
+
 void loop() {
   // Do not allow the system to run until both modules are online
   //BS.check_modules_online();
   unsigned long last_pause = millis();
   bool pause_interrupt_set = false;
+  
   while(blindsight_running){
     // Before re-attaching the interrupt to the PAUSE Pin:
-    // - Wait for 5 seconds and make sure the button is not being held down
+    // Wait for 5 seconds and make sure the button is not being held down
     if(millis() - last_pause > 5000 && !pause_interrupt_set && digitalRead(PAUSE_PIN) == HIGH){
       attachInterrupt(1, PAUSE_ISR, LOW);
       pause_interrupt_set = true;
     }
-    unsigned long start_t = millis();
-//    BS.start_ranging(0);
-    unsigned long end_t = millis();
-//    Serial.print("Start_Ranging: ");
-//    Serial.println(end_t - start_t);
-//    timed_function_times[0] = end_t - start_t;
-    
-    start_t = millis(); 
+
+    Serial.println("read");
     BS.read_sensor();
-    end_t = millis();
-//    Serial.print("Read_Sensor: ");
-//    Serial.println(end_t - start_t);
-//    timed_function_times[1] = end_t - start_t;
-    
-    start_t = millis();
+    Serial.println("Print");
     BS.print_sensor_data();
-    end_t = millis();
-//    Serial.print("Print_Sensor_Data: ");
-//    Serial.println(end_t - start_t);
-//    timed_function_times[2] = end_t - start_t;
-    
-    start_t = millis();
+    Serial.println("calculate");
     BS.calculate_motor_intensity();
-    end_t = millis();
-//    Serial.print("Calculate_Intensity: ");
-//    Serial.println(end_t - start_t);
-//    timed_function_times[3] = end_t - start_t;
-  
-    //BS.print_timing();
-    
+    Serial.println("update");
   #if WIRELESS
-//  if(millis() - lastSentTime >= SEND_RATE) {
-//      start_t = millis();
-      BS.update_nodes();
-//      end_t = millis();
-//      Serial.print("UpdateNodes: ");
-//      Serial.println(end_t - start_t);
-//      timed_function_times[4] = end_t - start_t;
-//      lastSentTime = millis();
-//  }
+    BS.update_nodes();
   #endif
   
-    /**********************************/
-    /*** * Recalibration Handling * ***/
-    /**********************************/
+/*************************/
+/*** * Recalibration * ***/
+/*************************/
   
     // Ambient temperature is verified every TEMP_CHECK_INTERVAL minutes to determine if recalibration is necessary.
     // If abs(last_calibration_temperature - current_ambient_temperature) >= 5C then, according to MaxBotix, calibration is necessary.
@@ -231,49 +195,73 @@ void loop() {
     }
   #endif
   
-    /*******************************/
-    /*** * User Input Handling * ***/
-    /*******************************/
+/**********************/
+/*** * User Input * ***/
+/**********************/
     
   #if USERINPUT
-    /* Sensitivity and Intensity Deltas
+    /* Sensitivity and Intensity Adjustments
      * These globals offset the default intensity/sensitivity setting of the device. 
      * Sensitivity  refers to the distance at which the device begins to consider objects a threat (vibration begins).
      * Intensity    refers to the strength with which the motors vibrate.
      */
+     
     // Sensitivity Pot
-    delta_sensitivity = analogRead(SENSITIVITY_POT);
-  
+    // While the sensitivity is being adjusted, ignore all mid and low range readings and only vibrate for the max range. 
+    // This should make it easier to select the range of the device. 
+    if(abs(delta_sensitivity - analogRead(SENSITIVITY_POT)) > 6){
+      unsigned long last_adjust_time = millis();
+      
+      while(millis() - last_adjust_time < 2000){
+        int temp_sensitivity = analogRead(SENSITIVITY_POT);
+        
+        // if a change is made, reset the last_adjust time
+        last_adjust_time = abs(delta_sensitivity - temp_sensitivity) > 6 ? millis() : last_adjust_time;
+
+        // update past sensitivity setting 
+        delta_sensitivity = abs(delta_sensitivity - temp_sensitivity) > 6 ? temp_sensitivity : delta_sensitivity;
+
+        // calculate intensity and ignore the MID and LOW range obstacles - only vibrate for objects at the MAX range
+        BS.calculate_motor_intensity(true);
+        BS.update_nodes();
+      }
+    }
+   //delta_sensitivity = analogRead(SENSITIVITY_POT);
+   
+    Serial.print("Sensitivity: ");
+    Serial.println(delta_sensitivity);
     // Intensity Pot
     // Detect if user changed potentiometer. If he did then begin intensity adjustment.
     // This means vibrating the bands continuously so that the intensity may be set more easily
     // Stop the continuous vibrations after 2 seconds
-    
     if(abs(delta_intensity - analogRead(INTENSITY_POT)) > 6){
-      // assume user is adjusting intensity
-      unsigned long adjust_begin = millis();
-      
-      while(millis() - adjust_begin < 2000){
-//        Serial.println("Adjusting Intensity");
-//        Serial.println(delta_intensity);
+      unsigned long last_adjust_time = millis();
 
+      // stay in adjustment mode until the potentiometer value is not changed for >2seconds
+      while(millis() - last_adjust_time < 2000){
         // read in intensity setting
         int temp_intensity = analogRead(INTENSITY_POT);
-//        Serial.println(temp_intensity);
-//        Serial.println(abs(delta_intensity - temp_intensity));
-        // compare current intensity setting to past intensity setting
-        adjust_begin = abs(delta_intensity - temp_intensity) > 6 ? millis() : adjust_begin;
+        
+        // if a change is made, reset the last_adjust time
+        last_adjust_time = abs(delta_intensity - temp_intensity) > 6 ? millis() : last_adjust_time;
+        
         // update past intensity setting
         delta_intensity = abs(delta_intensity - temp_intensity) > 6 ? temp_intensity : delta_intensity;
         
         // send packet to bands to vibrate at new intensity at min period
         // activate the override parameter and use the default period
         int scaled_intensity = 255 - ((float)delta_intensity-0)/(1023-0)*255;
+
+        // update the nodes 
         BS.update_nodes(true, scaled_intensity);
+        Serial.print("Intensity: ");
+        Serial.println(delta_intensity);
       }
-      
+
+      // reset the vibration setting at the nodes 
       BS.update_nodes(true, 0); 
     }
+
 
   #endif
   }
@@ -283,8 +271,8 @@ void loop() {
   /**************************/
   //Serial.println("Entering Low Power Mode");
   #if USERINPUT
-  low_power_mode();
-  blindsight_running != blindsight_running;
-  //Serial.println("Exit Low Power Mode");
+    low_power_mode();
+    blindsight_running != blindsight_running;
+    //Serial.println("Exit Low Power Mode");
   #endif
 }
